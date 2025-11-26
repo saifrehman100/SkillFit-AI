@@ -1,0 +1,57 @@
+# FastAPI and server
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Database
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+alembic==1.13.1
+
+# LLM SDKs
+anthropic==0.18.1
+openai==1.12.0
+google-generativeai==0.3.2
+langchain==0.1.6
+langchain-anthropic==0.1.1
+langchain-openai==0.0.5
+langchain-google-genai==0.0.6
+
+# Document parsing
+PyMuPDF==1.23.21
+python-docx==1.1.0
+pypdf==4.0.1
+unstructured==0.12.3
+python-magic==0.4.27
+
+# Embeddings and vector search
+sentence-transformers==2.3.1
+pgvector==0.2.4
+numpy==1.26.3
+
+# Async processing
+celery==5.3.6
+redis==5.0.1
+
+# Authentication and security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dotenv==1.0.1
+
+# Utilities
+httpx==0.26.0
+aiofiles==23.2.1
+tenacity==8.2.3
+
+# Testing
+pytest==7.4.4
+pytest-asyncio==0.23.3
+pytest-cov==4.1.0
+httpx==0.26.0
+faker==22.6.0
+
+# Monitoring and logging
+structlog==24.1.0
+prometheus-client==0.19.0
