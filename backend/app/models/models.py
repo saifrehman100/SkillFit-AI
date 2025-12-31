@@ -16,6 +16,7 @@ from sqlalchemy import (
     ForeignKey,
     JSON,
     Index,
+    func,
 )
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
@@ -43,6 +44,7 @@ class User(Base):
     resumes = relationship("Resume", back_populates="user", cascade="all, delete-orphan")
     jobs = relationship("Job", back_populates="user", cascade="all, delete-orphan")
     matches = relationship("Match", back_populates="user", cascade="all, delete-orphan")
+    applications = relationship("Application", back_populates="user", cascade="all, delete-orphan")
 
 
 class Resume(Base):
@@ -93,7 +95,7 @@ class Job(Base):
     embedding = Column(Vector(1536), nullable=True)
 
     # Metadata
-    source_url = Column(String(512), nullable=True)
+    source_url = Column(Text, nullable=True)  # Changed from String(512) to Text for long URLs
     job_hash = Column(String(64), nullable=True, index=True)  # For deduplication
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -102,6 +104,7 @@ class Job(Base):
     # Relationships
     user = relationship("User", back_populates="jobs")
     matches = relationship("Match", back_populates="job", cascade="all, delete-orphan")
+    applications = relationship("Application", back_populates="job", cascade="all, delete-orphan")
 
     # Indexes
     __table_args__ = (
@@ -139,11 +142,46 @@ class Match(Base):
     user = relationship("User", back_populates="matches")
     resume = relationship("Resume", back_populates="matches")
     job = relationship("Job", back_populates="matches")
+    application = relationship("Application", back_populates="match", uselist=False)
 
     # Indexes
     __table_args__ = (
         Index("idx_match_score", "match_score"),
         Index("idx_match_user_resume_job", "user_id", "resume_id", "job_id"),
+    )
+
+
+class Application(Base):
+    """Application tracking for job applications."""
+
+    __tablename__ = "applications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    job_id = Column(Integer, ForeignKey("jobs.id"), nullable=True)
+    match_id = Column(Integer, ForeignKey("matches.id"), nullable=True)
+
+    company = Column(String(255), nullable=False)
+    position = Column(String(255), nullable=False)
+    status = Column(String(50), default="wishlist")  # wishlist, applied, interview, offer, rejected
+
+    application_date = Column(DateTime, nullable=True)
+    job_url = Column(Text, nullable=True)  # Changed from String(500) to Text for long URLs
+    notes = Column(Text, nullable=True)
+
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="applications")
+    job = relationship("Job", back_populates="applications")
+    match = relationship("Match", back_populates="application")
+
+    # Indexes
+    __table_args__ = (
+        Index("idx_application_user_status", "user_id", "status"),
+        Index("idx_application_status", "status"),
     )
 
 

@@ -66,3 +66,36 @@ celerybeat.pid
 # Uploads
 uploads/
 temp/
+
+# Node.js & Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env*.local
+frontend/.turbo
+frontend/dist/
+frontend/build/
+
+# Node logs
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+
+# Testing
+frontend/coverage/
+frontend/.nyc_output/
+
+# Vercel
+frontend/.vercel
+
+# TypeScript
+frontend/*.tsbuildinfo
+frontend/next-env.d.ts
+
+# Documentation & Discussion Files (not for production)
+DEPLOYMENT.md
+DEPLOYMENT_QUICKSTART.md
+DEPLOYMENT_CHECKLIST.md
+IMPLEMENTATION_SUMMARY.md
+scripts/prepare-deployment.sh

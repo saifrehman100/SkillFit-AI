@@ -90,6 +90,11 @@ class Settings(BaseSettings):
     enable_metrics: bool = Field(default=True)
     metrics_port: int = Field(default=9090)
 
+    # Cloud Storage (GCP)
+    gcp_project_id: Optional[str] = Field(default=None)
+    gcp_bucket_name: Optional[str] = Field(default=None)
+    gcs_credentials_json: Optional[str] = Field(default=None)
+
     @field_validator("allowed_extensions")
     @classmethod
     def parse_extensions(cls, v: str) -> list[str]:

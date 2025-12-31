@@ -115,6 +115,53 @@ class MatchResponse(BaseModel):
         from_attributes = True
 
 
+# Application schemas
+class ApplicationCreate(BaseModel):
+    job_id: Optional[int] = None
+    match_id: Optional[int] = None
+    company: str = Field(min_length=1, max_length=255)
+    position: str = Field(min_length=1, max_length=255)
+    status: str = Field(
+        default="wishlist",
+        pattern="^(wishlist|applied|interview|offer|rejected)$"
+    )
+    application_date: Optional[datetime] = None
+    job_url: Optional[str] = None  # Removed max_length constraint for long URLs
+    notes: Optional[str] = None
+
+
+class ApplicationUpdate(BaseModel):
+    status: Optional[str] = Field(
+        None,
+        pattern="^(wishlist|applied|interview|offer|rejected)$"
+    )
+    application_date: Optional[datetime] = None
+    job_url: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class ApplicationResponse(BaseModel):
+    id: int
+    user_id: int
+    job_id: Optional[int]
+    match_id: Optional[int]
+    company: str
+    position: str
+    status: str
+    application_date: Optional[datetime]
+    job_url: Optional[str]
+    notes: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    # Nested data (optional)
+    job: Optional[JobResponse] = None
+    match: Optional[MatchResponse] = None
+
+    class Config:
+        from_attributes = True
+
+
 # Batch job schemas
 class BatchJobResponse(BaseModel):
     id: int

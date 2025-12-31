@@ -222,7 +222,7 @@ class GeminiClient(BaseLLMClient):
         self.client = genai.GenerativeModel(self.model)
 
     def get_default_model(self) -> str:
-        return "gemini-pro"
+        return "gemini-2.0-flash-exp"
 
     async def generate(
         self,

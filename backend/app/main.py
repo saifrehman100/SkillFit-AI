@@ -7,10 +7,11 @@ from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 
 from app.core.config import settings
 from app.core.logging_config import configure_logging, get_logger
-from app.api import auth, resumes, jobs, matches, health, linkedin
+from app.api import auth, resumes, jobs, matches, health, linkedin, applications
 
 # Configure logging
 configure_logging()
@@ -53,6 +54,21 @@ app.add_middleware(
 
 
 # Exception handlers
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc: RequestValidationError):
+    """Handle validation errors with detailed logging."""
+    logger.error(
+        "Validation error",
+        path=request.url.path,
+        errors=exc.errors(),
+        body=await request.body()
+    )
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()}
+    )
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     """Global exception handler."""
@@ -71,6 +87,7 @@ app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(resumes.router, prefix="/api/v1/resumes", tags=["Resumes"])
 app.include_router(jobs.router, prefix="/api/v1/jobs", tags=["Jobs"])
 app.include_router(matches.router, prefix="/api/v1/matches", tags=["Matches"])
+app.include_router(applications.router, prefix="/api/v1/applications", tags=["Applications"])
 app.include_router(linkedin.router, prefix="/api/v1/linkedin", tags=["LinkedIn Integration 🔗"])
 
 

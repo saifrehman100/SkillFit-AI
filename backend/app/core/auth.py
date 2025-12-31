@@ -2,6 +2,7 @@
 Authentication and authorization utilities.
 Supports API key-based authentication for users with their own LLM API keys.
 """
+import os
 import secrets
 from datetime import datetime, timedelta
 from typing import Optional
@@ -16,8 +17,18 @@ from app.core.config import settings
 from app.models.database import get_db
 from app.models.models import User
 
+# Skip passlib's wrap bug detection for bcrypt 4.x compatibility
+os.environ["PASSLIB_SKIP_CHECKS"] = "1"
+
 # Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Configure bcrypt to not truncate and handle password length ourselves
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__ident="2b",  # Use bcrypt 2b variant
+    bcrypt__rounds=12,   # Set rounds explicitly
+    bcrypt__truncate_error=True,  # Enable truncate error handling
+)
 
 # Security schemes
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
@@ -27,14 +38,18 @@ bearer_scheme = HTTPBearer(auto_error=False)
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against a hash."""
     # Truncate password to 72 bytes for bcrypt compatibility
-    plain_password = plain_password[:72]
+    # Convert to bytes, truncate, then back to string
+    password_bytes = plain_password.encode('utf-8')[:72]
+    plain_password = password_bytes.decode('utf-8', errors='ignore')
     return pwd_context.verify(plain_password, hashed_password)
 
 
 def get_password_hash(password: str) -> str:
     """Hash a password."""
     # Truncate password to 72 bytes for bcrypt compatibility
-    password = password[:72]
+    # Convert to bytes, truncate, then back to string
+    password_bytes = password.encode('utf-8')[:72]
+    password = password_bytes.decode('utf-8', errors='ignore')
     return pwd_context.hash(password)
 
 
@@ -70,13 +85,10 @@ def decode_access_token(token: str) -> Optional[dict]:
 async def get_current_user_from_token(
     credentials: Optional[HTTPAuthorizationCredentials] = Security(bearer_scheme),
     db: Session = Depends(get_db)
-) -> User:
+) -> Optional[User]:
     """Get current user from JWT token."""
     if not credentials:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated"
-        )
+        return None
 
     token = credentials.credentials
     payload = decode_access_token(token)
@@ -113,13 +125,10 @@ async def get_current_user_from_token(
 async def get_current_user_from_api_key(
     api_key: Optional[str] = Security(api_key_header),
     db: Session = Depends(get_db)
-) -> User:
+) -> Optional[User]:
     """Get current user from API key."""
     if not api_key:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="API key required"
-        )
+        return None
 
     user = db.query(User).filter(User.api_key == api_key).first()
     if user is None:
