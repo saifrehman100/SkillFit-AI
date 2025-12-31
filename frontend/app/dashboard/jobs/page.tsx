@@ -1,10 +1,21 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { Briefcase, Plus, Trash2 } from 'lucide-react';
+import { Briefcase, Plus, Trash2, Link as LinkIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { useJobs } from '@/lib/hooks/useJobs';
 import { jobsAPI } from '@/lib/api/jobs';
 import { formatDate } from '@/lib/utils';
@@ -12,6 +23,9 @@ import { toast } from 'sonner';
 
 export default function JobsPage() {
   const { jobs, isLoading, mutate } = useJobs();
+  const [importUrl, setImportUrl] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this job?')) return;
@@ -22,6 +36,26 @@ export default function JobsPage() {
       mutate();
     } catch (error) {
       toast.error('Failed to delete job');
+    }
+  };
+
+  const handleImport = async () => {
+    if (!importUrl.trim()) {
+      toast.error('Please enter a job URL');
+      return;
+    }
+
+    setImporting(true);
+    try {
+      await jobsAPI.importFromUrl(importUrl);
+      toast.success('Job imported successfully!');
+      setImportUrl('');
+      setImportDialogOpen(false);
+      mutate();
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to import job');
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -39,12 +73,53 @@ export default function JobsPage() {
             Manage job descriptions
           </p>
         </div>
-        <Link href="/dashboard/jobs/create">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Job
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <LinkIcon className="h-4 w-4 mr-2" />
+                Import from URL
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Import Job from URL</DialogTitle>
+                <DialogDescription>
+                  Paste a job URL from LinkedIn, Indeed, or Glassdoor to automatically import the job details.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div>
+                  <Label htmlFor="job-url">Job URL</Label>
+                  <Input
+                    id="job-url"
+                    type="url"
+                    placeholder="https://www.linkedin.com/jobs/view/..."
+                    value={importUrl}
+                    onChange={(e) => setImportUrl(e.target.value)}
+                    className="mt-2"
+                  />
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Supported platforms: LinkedIn, Indeed, Glassdoor
+                  </p>
+                </div>
+                <Button
+                  onClick={handleImport}
+                  disabled={importing || !importUrl.trim()}
+                  className="w-full"
+                >
+                  {importing ? 'Importing...' : 'Import Job'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Link href="/dashboard/jobs/create">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Manually
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Job List */}

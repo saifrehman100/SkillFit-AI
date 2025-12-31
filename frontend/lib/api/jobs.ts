@@ -5,6 +5,9 @@ export const jobsAPI = {
   create: (data: JobCreateRequest, analyze = true) =>
     apiClient.post<JobResponse>(`/jobs/?analyze=${analyze}`, data),
 
+  importFromUrl: (url: string, analyze = true) =>
+    apiClient.post<JobResponse>(`/jobs/import-from-url?url=${encodeURIComponent(url)}&analyze=${analyze}`),
+
   list: (skip = 0, limit = 100, active_only = true) =>
     apiClient.get<JobResponse[]>('/jobs/', {
       params: { skip, limit, active_only }
