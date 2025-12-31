@@ -42,6 +42,15 @@ A production-ready AI-powered system for matching resumes to job descriptions us
 
 ## 🛠 Technology Stack
 
+**Frontend**
+- Next.js 14 (App Router) - React framework with SSR/CSR
+- TypeScript - Type-safe development
+- Tailwind CSS - Utility-first styling with dark mode
+- shadcn/ui - Radix UI primitives for components
+- SWR - Data fetching and caching
+- Recharts - Match score visualization
+- React Dropzone - File upload interface
+
 **Backend Framework**
 - FastAPI (Python 3.11+) - High-performance async API framework
 - Pydantic - Data validation and settings management
@@ -117,12 +126,12 @@ curl -X POST "http://localhost:8000/api/v1/linkedin/scan-job" \
 
 ### Prerequisites
 
-- Python 3.11+
 - Docker & Docker Compose (recommended)
+- OR: Python 3.11+ and Node.js 20+ for local development
 - PostgreSQL 16+ with pgvector extension
 - Redis (for Celery)
 
-### Option 1: Docker Compose (Recommended)
+### Option 1: Docker Compose - Full Stack (Recommended)
 
 1. **Clone the repository**
 ```bash
@@ -136,17 +145,26 @@ cp .env.example .env
 # Edit .env and add your LLM API keys
 ```
 
-3. **Start all services**
+3. **Start all services (Backend + Frontend + Database)**
 ```bash
 docker-compose up -d
 ```
 
-4. **Access the API**
-- API: http://localhost:8000
-- Swagger Docs: http://localhost:8000/docs
-- Celery Flower: http://localhost:5555
+4. **Access the application**
+- **Frontend UI**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
+- **Celery Flower**: http://localhost:5555
 
-### Option 2: Local Development
+### Option 2: Development Mode with Hot Reload
+
+For frontend development with live reload:
+
+```bash
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+```
+
+### Option 3: Local Development (Backend Only)
 
 1. **Install dependencies**
 ```bash
