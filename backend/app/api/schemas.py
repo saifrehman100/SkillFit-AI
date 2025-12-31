@@ -132,7 +132,7 @@ class MatchResponse(BaseModel):
     job_id: int
     match_score: float
     missing_skills: Optional[List[str]]
-    recommendations: Optional[List[str]]
+    recommendations: Optional[List[Any]]  # Can be List[str] (old format) or List[Dict] (new format with action, priority, impact_estimate, reason)
     explanation: Optional[str]
     llm_provider: Optional[str]
     llm_model: Optional[str]
