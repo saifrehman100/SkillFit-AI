@@ -24,9 +24,32 @@ class UserResponse(BaseModel):
     is_active: bool
     created_at: datetime
     api_key: Optional[str] = None
+    llm_provider: Optional[str] = None
+    llm_model: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+
+class LLMSettingsUpdate(BaseModel):
+    """Schema for updating user's LLM preferences."""
+    provider: Optional[str] = Field(
+        None,
+        description="LLM provider (gemini, openai, claude, openai_compatible)"
+    )
+    model: Optional[str] = Field(None, description="Specific model name to use")
+    api_keys: Optional[Dict[str, str]] = Field(
+        None,
+        description="User's own API keys {provider: key}"
+    )
+
+
+class LLMSettingsResponse(BaseModel):
+    """Response for user's LLM settings."""
+    provider: Optional[str] = None
+    model: Optional[str] = None
+    has_custom_keys: bool = False
+    available_providers: List[str] = ["gemini", "openai", "claude", "openai_compatible"]
 
 
 class Token(BaseModel):

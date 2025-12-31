@@ -6,7 +6,14 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.schemas import UserCreate, UserLogin, UserResponse, Token
+from app.api.schemas import (
+    UserCreate,
+    UserLogin,
+    UserResponse,
+    Token,
+    LLMSettingsUpdate,
+    LLMSettingsResponse
+)
 from app.core.auth import (
     create_access_token,
     generate_api_key,
@@ -96,3 +103,57 @@ async def regenerate_api_key(
     db.commit()
 
     return {"api_key": current_user.api_key}
+
+
+@router.get("/llm-settings", response_model=LLMSettingsResponse)
+async def get_llm_settings(current_user: User = Depends(get_current_user)):
+    """
+    Get user's LLM preferences and settings.
+    """
+    return LLMSettingsResponse(
+        provider=current_user.llm_provider,
+        model=current_user.llm_model,
+        has_custom_keys=bool(current_user.llm_api_keys),
+        available_providers=["gemini", "openai", "claude", "openai_compatible"]
+    )
+
+
+@router.put("/llm-settings", response_model=LLMSettingsResponse)
+async def update_llm_settings(
+    settings_data: LLMSettingsUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Update user's LLM preferences.
+    Allows users to set their preferred provider, model, and optionally their own API keys.
+    """
+    # Update provider if provided
+    if settings_data.provider is not None:
+        # Validate provider
+        valid_providers = ["gemini", "openai", "claude", "openai_compatible"]
+        if settings_data.provider not in valid_providers:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid provider. Must be one of: {', '.join(valid_providers)}"
+            )
+        current_user.llm_provider = settings_data.provider
+
+    # Update model if provided
+    if settings_data.model is not None:
+        current_user.llm_model = settings_data.model
+
+    # Update API keys if provided (store as JSON)
+    # In production, these should be encrypted before storing
+    if settings_data.api_keys is not None:
+        current_user.llm_api_keys = settings_data.api_keys
+
+    db.commit()
+    db.refresh(current_user)
+
+    return LLMSettingsResponse(
+        provider=current_user.llm_provider,
+        model=current_user.llm_model,
+        has_custom_keys=bool(current_user.llm_api_keys),
+        available_providers=["gemini", "openai", "claude", "openai_compatible"]
+    )

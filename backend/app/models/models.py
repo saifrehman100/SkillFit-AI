@@ -39,6 +39,8 @@ class User(Base):
 
     # LLM API Keys (encrypted in production)
     llm_api_keys = Column(JSON, nullable=True)  # Store user's own LLM API keys
+    llm_provider = Column(String(50), nullable=True)  # User's preferred LLM provider
+    llm_model = Column(String(100), nullable=True)  # User's preferred model name
 
     # Relationships
     resumes = relationship("Resume", back_populates="user", cascade="all, delete-orphan")

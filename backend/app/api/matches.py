@@ -53,9 +53,17 @@ async def create_match(
             detail="Job not found"
         )
 
-    # Get LLM client
-    provider = match_request.llm_provider or settings.default_llm_provider
-    model = match_request.llm_model or settings.default_model_name
+    # Get LLM client - Priority: request > user preference > system default
+    provider = (
+        match_request.llm_provider or
+        current_user.llm_provider or
+        settings.default_llm_provider
+    )
+    model = (
+        match_request.llm_model or
+        current_user.llm_model or
+        settings.default_model_name
+    )
     api_key = get_user_llm_api_key(current_user, provider)
 
     if not api_key:
@@ -164,9 +172,17 @@ async def create_batch_matches(
             detail="One or more resumes not found"
         )
 
-    # Get LLM client
-    provider = batch_request.llm_provider or settings.default_llm_provider
-    model = batch_request.llm_model or settings.default_model_name
+    # Get LLM client - Priority: request > user preference > system default
+    provider = (
+        batch_request.llm_provider or
+        current_user.llm_provider or
+        settings.default_llm_provider
+    )
+    model = (
+        batch_request.llm_model or
+        current_user.llm_model or
+        settings.default_model_name
+    )
     api_key = get_user_llm_api_key(current_user, provider)
 
     if not api_key:
