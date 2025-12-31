@@ -72,6 +72,7 @@ class Resume(Base):
     # Metadata
     file_size = Column(Integer, nullable=True)
     upload_hash = Column(String(64), nullable=True, index=True)  # For deduplication
+    file_path = Column(String(512), nullable=True)  # GCS file path (resumes/user_id/filename)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

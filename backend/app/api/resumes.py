@@ -11,6 +11,7 @@ from app.api.schemas import ResumeResponse, ResumeUpload
 from app.core.auth import get_current_user, get_user_llm_api_key
 from app.core.config import settings
 from app.core.llm_providers import LLMFactory
+from app.core.storage import get_storage_client
 from app.models.database import get_db
 from app.models.models import User, Resume
 from app.services.resume_parser import ResumeParser, ResumeAnalyzer, ResumeParseError
@@ -69,6 +70,28 @@ async def upload_resume(
             detail="This resume has already been uploaded"
         )
 
+    # Upload file to cloud storage
+    storage = get_storage_client()
+    content_type_map = {
+        "pdf": "application/pdf",
+        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "txt": "text/plain"
+    }
+    content_type = content_type_map.get(file_extension, "application/octet-stream")
+
+    try:
+        file_path = storage.upload_file(
+            file_content=content,
+            filename=file.filename,
+            content_type=content_type,
+            user_id=current_user.id
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upload file to storage: {str(e)}"
+        )
+
     # Create resume record
     resume = Resume(
         user_id=current_user.id,
@@ -76,7 +99,8 @@ async def upload_resume(
         file_type=file_extension,
         raw_text=text,
         file_size=len(content),
-        upload_hash=file_hash
+        upload_hash=file_hash,
+        file_path=file_path
     )
 
     # Analyze with LLM if requested
@@ -163,6 +187,15 @@ async def delete_resume(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Resume not found"
         )
+
+    # Delete file from cloud storage if path exists
+    if resume.file_path:
+        storage = get_storage_client()
+        try:
+            storage.delete_file(resume.file_path)
+        except Exception as e:
+            # Log error but continue with database deletion
+            print(f"Warning: Failed to delete file from storage: {str(e)}")
 
     db.delete(resume)
     db.commit()
