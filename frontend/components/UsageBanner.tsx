@@ -57,9 +57,9 @@ export default function UsageBanner() {
             </h3>
             <p className="text-sm text-muted-foreground mb-3">
               {isAtLimit ? (
-                <>You've used all {usage.matches_limit} free matches. Upgrade to Pro for unlimited matches!</>
+                <>You&apos;ve used all {usage.matches_limit} free matches. Upgrade to Pro for unlimited matches!</>
               ) : (
-                <>You've used {usage.matches_used} of {usage.matches_limit} free matches. {usage.matches_remaining} remaining.</>
+                <>You&apos;ve used {usage.matches_used} of {usage.matches_limit} free matches. {usage.matches_remaining} remaining.</>
               )}
             </p>
 
