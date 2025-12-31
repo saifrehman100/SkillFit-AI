@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, Lightbulb, TrendingUp } from 'lucide-react';
 import { RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -95,18 +95,6 @@ export default function MatchDetailPage() {
                 <p className="font-medium text-xs">{match.llm_model}</p>
               </div>
             )}
-            {match.tokens_used && (
-              <div>
-                <p className="text-muted-foreground">Tokens Used</p>
-                <p className="font-medium">{match.tokens_used.toLocaleString()}</p>
-              </div>
-            )}
-            {match.cost_estimate && (
-              <div>
-                <p className="text-muted-foreground">Est. Cost</p>
-                <p className="font-medium">${match.cost_estimate.toFixed(4)}</p>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>
@@ -137,19 +125,63 @@ export default function MatchDetailPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-500" />
-              Recommendations
+              <Lightbulb className="h-5 w-5 text-yellow-500" />
+              AI-Powered Recommendations
             </CardTitle>
+            <p className="text-sm text-muted-foreground mt-2">
+              Actionable steps to improve your match score
+            </p>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-2">
-              {match.recommendations.map((rec, idx) => (
-                <li key={idx} className="flex gap-2">
-                  <span className="text-muted-foreground">•</span>
-                  <span>{rec}</span>
-                </li>
-              ))}
-            </ul>
+            <div className="space-y-4">
+              {match.recommendations.map((rec: any, idx: number) => {
+                // Handle both old format (string) and new format (object)
+                const isStructured = typeof rec === 'object' && rec.action;
+                const priorityColors = {
+                  High: 'bg-red-500/10 text-red-500 border-red-500/20',
+                  Medium: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+                  Low: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+                };
+
+                return (
+                  <div
+                    key={idx}
+                    className="border rounded-lg p-4 space-y-3 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="font-medium">
+                          {isStructured ? rec.action : rec}
+                        </p>
+                        {isStructured && rec.reason && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {rec.reason}
+                          </p>
+                        )}
+                      </div>
+                      {isStructured && (
+                        <div className="flex gap-2 shrink-0">
+                          {rec.priority && (
+                            <Badge
+                              variant="outline"
+                              className={priorityColors[rec.priority as keyof typeof priorityColors]}
+                            >
+                              {rec.priority}
+                            </Badge>
+                          )}
+                          {rec.impact_estimate && (
+                            <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
+                              <TrendingUp className="h-3 w-3 mr-1" />
+                              +{rec.impact_estimate}%
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       )}

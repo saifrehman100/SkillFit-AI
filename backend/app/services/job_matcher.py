@@ -33,7 +33,11 @@ Provide a comprehensive matching analysis with the following:
 
 2. **Missing Skills**: List specific skills, qualifications, or experience mentioned in the job description that are not evident in the resume
 
-3. **Recommendations**: Provide 3-5 specific, actionable recommendations for the candidate to improve their fit for this role
+3. **Actionable Recommendations**: Provide 5-7 specific, actionable recommendations for the candidate to improve their fit for this role. For EACH recommendation, include:
+   - The specific action they should take
+   - Priority level (High/Medium/Low)
+   - Estimated impact on match score (+5 to +20 points)
+   - Why this will help
 
 4. **Explanation**: Provide a detailed explanation (2-3 paragraphs) of:
    - Why you gave this score
@@ -49,7 +53,15 @@ Format your response as JSON with the following structure:
 {{
     "match_score": <number 0-100>,
     "missing_skills": ["skill1", "skill2", ...],
-    "recommendations": ["recommendation1", "recommendation2", ...],
+    "recommendations": [
+        {{
+            "action": "Specific action to take",
+            "priority": "High|Medium|Low",
+            "impact_estimate": <number 5-20>,
+            "reason": "Why this will help"
+        }},
+        ...
+    ],
     "explanation": "Detailed explanation text",
     "strengths": ["strength1", "strength2", ...],
     "weaknesses": ["weakness1", "weakness2", ...]
