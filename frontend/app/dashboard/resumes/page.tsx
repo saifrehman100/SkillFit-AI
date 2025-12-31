@@ -54,9 +54,9 @@ export default function ResumesPage() {
             <Card key={resume.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2 min-w-0 flex-1">
+                  <div className="flex items-start gap-2 min-w-0 flex-1 overflow-hidden">
                     <FileText className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                    <CardTitle className="text-lg break-words">{resume.filename}</CardTitle>
+                    <CardTitle className="text-lg break-words overflow-wrap-anywhere">{resume.filename}</CardTitle>
                   </div>
                   <button
                     onClick={() => handleDelete(resume.id)}

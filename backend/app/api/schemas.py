@@ -136,9 +136,8 @@ class MatchResponse(BaseModel):
     explanation: Optional[str]
     llm_provider: Optional[str]
     llm_model: Optional[str]
-    tokens_used: Optional[int]
-    cost_estimate: Optional[float]
     created_at: datetime
+    # Note: tokens_used and cost_estimate are stored in DB but not exposed to users
 
     class Config:
         from_attributes = True

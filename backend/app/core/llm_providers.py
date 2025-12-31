@@ -93,7 +93,7 @@ class ClaudeClient(BaseLLMClient):
         self.client = Anthropic(api_key=self.api_key or settings.anthropic_api_key)
 
     def get_default_model(self) -> str:
-        return "claude-sonnet-4-20250514"
+        return "claude-3-5-sonnet-20241022"  # Claude Sonnet 3.5 (latest)
 
     async def generate(
         self,
@@ -158,7 +158,7 @@ class OpenAIClient(BaseLLMClient):
         self.client = OpenAI(api_key=self.api_key or settings.openai_api_key)
 
     def get_default_model(self) -> str:
-        return "gpt-4o"
+        return "gpt-4o"  # Latest GPT-4 model (Note: GPT-5 not yet released)
 
     async def generate(
         self,
