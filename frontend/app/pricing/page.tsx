@@ -80,7 +80,7 @@ export default function PricingPage() {
             Simple, transparent pricing
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Choose the plan that's right for you. Upgrade or downgrade anytime.
+            Choose the plan that&apos;s right for you. Upgrade or downgrade anytime.
           </p>
         </div>
 
@@ -161,21 +161,21 @@ export default function PricingPage() {
             <div>
               <h3 className="font-semibold mb-2">Can I upgrade or downgrade anytime?</h3>
               <p className="text-muted-foreground">
-                Yes! You can upgrade to Pro anytime to unlock unlimited matches. If you downgrade, you'll keep access until the end of your billing period.
+                Yes! You can upgrade to Pro anytime to unlock unlimited matches. If you downgrade, you&apos;ll keep access until the end of your billing period.
               </p>
             </div>
 
             <div>
               <h3 className="font-semibold mb-2">What happens when I reach the free tier limit?</h3>
               <p className="text-muted-foreground">
-                You'll be prompted to upgrade to Pro to create more matches. You can still access your existing matches, upload resumes, and add jobs.
+                You&apos;ll be prompted to upgrade to Pro to create more matches. You can still access your existing matches, upload resumes, and add jobs.
               </p>
             </div>
 
             <div>
               <h3 className="font-semibold mb-2">How does billing work?</h3>
               <p className="text-muted-foreground">
-                Pro plan is billed monthly. You can cancel anytime with no long-term contracts. We'll send you an invoice each month.
+                Pro plan is billed monthly. You can cancel anytime with no long-term contracts. We&apos;ll send you an invoice each month.
               </p>
             </div>
 
