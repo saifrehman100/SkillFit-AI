@@ -4,14 +4,20 @@ import { RegisterRequest, RegisterResponse, LoginRequest, LoginResponse, UserRes
 export interface LLMSettingsUpdate {
   provider?: string;
   model?: string;
-  api_keys?: Record<string, string>;
 }
 
 export interface LLMSettingsResponse {
   provider: string | null;
   model: string | null;
-  has_custom_keys: boolean;
   available_providers: string[];
+}
+
+export interface UsageResponse {
+  plan: string;
+  matches_used: number;
+  matches_limit: number;
+  matches_remaining: number;
+  can_create_match: boolean;
 }
 
 export const authAPI = {
@@ -32,4 +38,7 @@ export const authAPI = {
 
   updateLLMSettings: (data: LLMSettingsUpdate) =>
     apiClient.put<LLMSettingsResponse>('/auth/llm-settings', data),
+
+  getUsage: () =>
+    apiClient.get<UsageResponse>('/auth/usage'),
 };

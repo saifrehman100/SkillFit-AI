@@ -4,6 +4,7 @@ import { FileText, Briefcase, Target, Kanban } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import UsageBanner from '@/components/UsageBanner';
 import { useResumes } from '@/lib/hooks/useResumes';
 import { useJobs } from '@/lib/hooks/useJobs';
 import { useMatches } from '@/lib/hooks/useMatches';
@@ -60,6 +61,9 @@ export default function DashboardPage() {
           Here&apos;s what&apos;s happening with your job search
         </p>
       </div>
+
+      {/* Usage Banner */}
+      <UsageBanner />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

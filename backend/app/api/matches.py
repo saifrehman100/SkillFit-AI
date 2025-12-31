@@ -29,6 +29,20 @@ async def create_match(
     Create a match between a resume and job description.
     Returns match score, missing skills, and recommendations.
     """
+    # Check usage limits for free tier
+    PLAN_LIMITS = {
+        "free": 3,
+        "pro": 999999,
+        "enterprise": 999999
+    }
+
+    limit = PLAN_LIMITS.get(current_user.plan, 3)
+    if current_user.matches_used >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Free tier limit reached ({limit} matches). Please upgrade to Pro for unlimited matches."
+        )
+
     # Verify resume ownership
     resume = db.query(Resume).filter(
         Resume.id == match_request.resume_id,
@@ -106,6 +120,9 @@ async def create_match(
 
         db.add(match)
 
+        # Increment user's match usage counter
+        current_user.matches_used += 1
+
         # Track API usage
         if settings.enable_cost_tracking:
             usage = APIUsage(
@@ -148,6 +165,22 @@ async def create_batch_matches(
     Create matches for multiple resumes against a single job.
     Useful for screening candidates.
     """
+    # Check usage limits for free tier (batch counts as number of resumes)
+    PLAN_LIMITS = {
+        "free": 3,
+        "pro": 999999,
+        "enterprise": 999999
+    }
+
+    limit = PLAN_LIMITS.get(current_user.plan, 3)
+    matches_to_create = len(batch_request.resume_ids)
+    if current_user.matches_used + matches_to_create > limit:
+        remaining = max(0, limit - current_user.matches_used)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Free tier limit would be exceeded. You have {remaining} matches remaining. Please upgrade to Pro for unlimited matches."
+        )
+
     # Verify job ownership
     job = db.query(Job).filter(
         Job.id == batch_request.job_id,
@@ -244,6 +277,9 @@ async def create_batch_matches(
                     cost_estimate=match.cost_estimate
                 )
                 db.add(usage)
+
+        # Increment user's match usage counter by number of successful matches
+        current_user.matches_used += len(matches)
 
         db.commit()
 

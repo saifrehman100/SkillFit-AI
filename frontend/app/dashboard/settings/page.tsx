@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Copy, RefreshCw } from 'lucide-react';
+import { Copy, RefreshCw, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +37,6 @@ const PROVIDER_MODELS = {
 interface LLMSettings {
   provider: string | null;
   model: string | null;
-  has_custom_keys: boolean;
 }
 
 export default function SettingsPage() {
@@ -49,15 +48,9 @@ export default function SettingsPage() {
   const [llmSettings, setLlmSettings] = useState<LLMSettings>({
     provider: null,
     model: null,
-    has_custom_keys: false,
   });
   const [selectedProvider, setSelectedProvider] = useState<string>('gemini');
   const [selectedModel, setSelectedModel] = useState<string>('');
-  const [apiKeys, setApiKeys] = useState({
-    openai: '',
-    claude: '',
-    gemini: '',
-  });
   const [savingLLM, setSavingLLM] = useState(false);
   const [loadingLLM, setLoadingLLM] = useState(true);
 
@@ -117,23 +110,16 @@ export default function SettingsPage() {
   const handleSaveLLMSettings = async () => {
     setSavingLLM(true);
     try {
-      // Build API keys object (only include non-empty keys)
-      const apiKeysToSave: Record<string, string> = {};
-      if (apiKeys.openai) apiKeysToSave.openai = apiKeys.openai;
-      if (apiKeys.claude) apiKeysToSave.claude = apiKeys.claude;
-      if (apiKeys.gemini) apiKeysToSave.gemini = apiKeys.gemini;
-
       const payload = {
         provider: selectedProvider,
         model: selectedModel || undefined,
-        api_keys: Object.keys(apiKeysToSave).length > 0 ? apiKeysToSave : undefined,
       };
 
       const response = await authAPI.updateLLMSettings(payload);
       setLlmSettings(response.data);
-      toast.success('LLM settings saved successfully!');
+      toast.success('AI preferences saved successfully!');
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Failed to save LLM settings');
+      toast.error(error.response?.data?.detail || 'Failed to save AI preferences');
     } finally {
       setSavingLLM(false);
     }
@@ -227,7 +213,10 @@ export default function SettingsPage() {
       {/* LLM Preferences */}
       <Card>
         <CardHeader>
-          <CardTitle>AI Model Preferences</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            AI Model Preferences
+          </CardTitle>
           <CardDescription>
             Choose your preferred AI provider and model for resume analysis
           </CardDescription>
@@ -266,81 +255,34 @@ export default function SettingsPage() {
               ))}
             </select>
             <p className="text-sm text-muted-foreground mt-2">
-              Leave as &quot;Use system default&quot; to use the best available model for the provider
+              Leave as &quot;Use system default&quot; to use the best available model
             </p>
-          </div>
-
-          <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-lg text-sm">
-            <p className="font-medium text-blue-400 mb-2">Current Selection:</p>
-            <ul className="space-y-1 text-blue-300">
-              <li>• Provider: <span className="font-mono">{selectedProvider}</span></li>
-              <li>• Model: <span className="font-mono">{selectedModel || 'System Default'}</span></li>
-              {llmSettings.has_custom_keys && (
-                <li>• Using your own API keys</li>
-              )}
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* User's Own LLM API Keys */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Your AI API Keys (Optional)</CardTitle>
-          <CardDescription>
-            Add your own API keys to use your AI accounts instead of system defaults
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="openai_key">OpenAI API Key</Label>
-            <Input
-              id="openai_key"
-              type="password"
-              placeholder="sk-..."
-              className="mt-2 font-mono text-sm"
-              value={apiKeys.openai}
-              onChange={(e) => setApiKeys({ ...apiKeys, openai: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label htmlFor="anthropic_key">Anthropic (Claude) API Key</Label>
-            <Input
-              id="anthropic_key"
-              type="password"
-              placeholder="sk-ant-..."
-              className="mt-2 font-mono text-sm"
-              value={apiKeys.claude}
-              onChange={(e) => setApiKeys({ ...apiKeys, claude: e.target.value })}
-            />
-          </div>
-          <div>
-            <Label htmlFor="google_key">Google (Gemini) API Key</Label>
-            <Input
-              id="google_key"
-              type="password"
-              placeholder="AIza..."
-              className="mt-2 font-mono text-sm"
-              value={apiKeys.gemini}
-              onChange={(e) => setApiKeys({ ...apiKeys, gemini: e.target.value })}
-            />
           </div>
 
           <Button
             variant="default"
             onClick={handleSaveLLMSettings}
             disabled={savingLLM || loadingLLM}
+            className="w-full"
           >
-            {savingLLM ? 'Saving...' : 'Save AI Settings'}
+            {savingLLM ? 'Saving...' : 'Save AI Preferences'}
           </Button>
 
+          <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-lg text-sm">
+            <p className="font-medium text-blue-400 mb-2">Current Selection:</p>
+            <ul className="space-y-1 text-blue-300">
+              <li>• Provider: <span className="font-mono">{selectedProvider}</span></li>
+              <li>• Model: <span className="font-mono">{selectedModel || 'System Default'}</span></li>
+            </ul>
+          </div>
+
           <div className="bg-muted/50 p-4 rounded-lg text-sm">
-            <p className="font-medium mb-2">Note:</p>
+            <p className="font-medium mb-2">How it works:</p>
             <ul className="space-y-1 text-muted-foreground">
-              <li>• Your API keys are stored securely in the database</li>
-              <li>• Leave blank to use system defaults (Gemini with our API key)</li>
-              <li>• You&apos;ll be charged by the provider when using your own keys</li>
-              <li>• Provider selection and model choice are saved separately</li>
+              <li>• We manage all AI API keys for you - no need to add your own</li>
+              <li>• Choose your preferred provider based on speed vs quality</li>
+              <li>• Gemini is fastest and free tier available</li>
+              <li>• All providers use our system API keys securely</li>
             </ul>
           </div>
         </CardContent>

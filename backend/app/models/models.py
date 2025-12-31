@@ -37,10 +37,15 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # LLM API Keys (encrypted in production)
-    llm_api_keys = Column(JSON, nullable=True)  # Store user's own LLM API keys
+    # LLM Preferences (system manages API keys, user just selects preference)
     llm_provider = Column(String(50), nullable=True)  # User's preferred LLM provider
     llm_model = Column(String(100), nullable=True)  # User's preferred model name
+
+    # Subscription & Usage Tracking
+    plan = Column(String(20), default="free", nullable=False)  # free, pro, enterprise
+    matches_used = Column(Integer, default=0, nullable=False)  # Track free tier usage
+    stripe_customer_id = Column(String(255), nullable=True)  # For future Stripe integration
+    stripe_subscription_id = Column(String(255), nullable=True)
 
     # Relationships
     resumes = relationship("Resume", back_populates="user", cascade="all, delete-orphan")

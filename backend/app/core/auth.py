@@ -167,15 +167,10 @@ async def get_current_user(
 
 def get_user_llm_api_key(user: User, provider: str) -> Optional[str]:
     """
-    Get user's LLM API key for a specific provider.
-    Falls back to system config if user hasn't set their own.
+    Get system LLM API key for a specific provider.
+    System manages all API keys - users only select their preferred provider.
     """
-    if user.llm_api_keys and isinstance(user.llm_api_keys, dict):
-        user_key = user.llm_api_keys.get(provider)
-        if user_key:
-            return user_key
-
-    # Fallback to system config
+    # Always use system config (SaaS model - we manage the keys)
     provider_keys = {
         "claude": settings.anthropic_api_key,
         "openai": settings.openai_api_key,

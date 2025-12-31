@@ -12,7 +12,8 @@ from app.api.schemas import (
     UserResponse,
     Token,
     LLMSettingsUpdate,
-    LLMSettingsResponse
+    LLMSettingsResponse,
+    UsageResponse
 )
 from app.core.auth import (
     create_access_token,
@@ -108,12 +109,12 @@ async def regenerate_api_key(
 @router.get("/llm-settings", response_model=LLMSettingsResponse)
 async def get_llm_settings(current_user: User = Depends(get_current_user)):
     """
-    Get user's LLM preferences and settings.
+    Get user's LLM preferences.
+    System manages API keys - users just select their preferred provider/model.
     """
     return LLMSettingsResponse(
         provider=current_user.llm_provider,
         model=current_user.llm_model,
-        has_custom_keys=bool(current_user.llm_api_keys),
         available_providers=["gemini", "openai", "claude", "openai_compatible"]
     )
 
@@ -126,7 +127,7 @@ async def update_llm_settings(
 ):
     """
     Update user's LLM preferences.
-    Allows users to set their preferred provider, model, and optionally their own API keys.
+    System manages API keys - users only select provider/model preference.
     """
     # Update provider if provided
     if settings_data.provider is not None:
@@ -143,17 +144,35 @@ async def update_llm_settings(
     if settings_data.model is not None:
         current_user.llm_model = settings_data.model
 
-    # Update API keys if provided (store as JSON)
-    # In production, these should be encrypted before storing
-    if settings_data.api_keys is not None:
-        current_user.llm_api_keys = settings_data.api_keys
-
     db.commit()
     db.refresh(current_user)
 
     return LLMSettingsResponse(
         provider=current_user.llm_provider,
         model=current_user.llm_model,
-        has_custom_keys=bool(current_user.llm_api_keys),
         available_providers=["gemini", "openai", "claude", "openai_compatible"]
+    )
+
+
+@router.get("/usage", response_model=UsageResponse)
+async def get_usage(current_user: User = Depends(get_current_user)):
+    """
+    Get user's usage statistics and plan information.
+    """
+    # Define plan limits
+    PLAN_LIMITS = {
+        "free": 3,
+        "pro": 999999,  # Unlimited for pro
+        "enterprise": 999999
+    }
+
+    limit = PLAN_LIMITS.get(current_user.plan, 3)
+    remaining = max(0, limit - current_user.matches_used)
+
+    return UsageResponse(
+        plan=current_user.plan,
+        matches_used=current_user.matches_used,
+        matches_limit=limit,
+        matches_remaining=remaining,
+        can_create_match=remaining > 0
     )
