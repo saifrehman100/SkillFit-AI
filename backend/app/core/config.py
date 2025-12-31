@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     host: str = Field(default="0.0.0.0")
     port: int = Field(default=8000)
     workers: int = Field(default=4)
+    allowed_origins: str = Field(default="http://localhost:3000")
 
     # Database
     database_url: str = Field(
@@ -100,6 +101,12 @@ class Settings(BaseSettings):
     def parse_extensions(cls, v: str) -> list[str]:
         """Parse comma-separated extensions into a list."""
         return [ext.strip().lower() for ext in v.split(",")]
+
+    @field_validator("allowed_origins")
+    @classmethod
+    def parse_origins(cls, v: str) -> list[str]:
+        """Parse comma-separated origins into a list."""
+        return [origin.strip() for origin in v.split(",") if origin.strip()]
 
     @property
     def is_production(self) -> bool:
