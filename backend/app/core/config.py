@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     default_llm_provider: Literal["claude", "openai", "gemini", "openai_compatible"] = Field(
         default="gemini"
     )
-    default_model_name: str = Field(default="gemini-2.0-flash-exp")
+    default_model_name: str = Field(default="gemini-2.5-flash")
     default_temperature: float = Field(default=0.3, ge=0.0, le=2.0)
     default_max_tokens: int = Field(default=4096, ge=1, le=32000)
 

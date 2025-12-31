@@ -93,7 +93,7 @@ class ClaudeClient(BaseLLMClient):
         self.client = Anthropic(api_key=self.api_key or settings.anthropic_api_key)
 
     def get_default_model(self) -> str:
-        return "claude-3-5-sonnet-20241022"  # Claude Sonnet 3.5 (latest)
+        return "claude-sonnet-4-20250514"  # Claude Sonnet 4.5
 
     async def generate(
         self,
@@ -158,7 +158,7 @@ class OpenAIClient(BaseLLMClient):
         self.client = OpenAI(api_key=self.api_key or settings.openai_api_key)
 
     def get_default_model(self) -> str:
-        return "gpt-4o"  # Latest GPT-4 model (Note: GPT-5 not yet released)
+        return "gpt-5.2"  # GPT-5.2 - best for coding and agentic tasks
 
     async def generate(
         self,
@@ -222,7 +222,7 @@ class GeminiClient(BaseLLMClient):
         self.client = genai.GenerativeModel(self.model)
 
     def get_default_model(self) -> str:
-        return "gemini-2.0-flash-exp"
+        return "gemini-2.5-flash"  # Gemini 2.5 Flash - best price-performance
 
     async def generate(
         self,

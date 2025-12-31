@@ -111,9 +111,9 @@ export default function SettingsPage() {
               onChange={(e) => setSelectedProvider(e.target.value)}
               disabled={loadingLLM}
             >
-              <option value="gemini">Google Gemini 2.0 Flash (Default)</option>
-              <option value="openai">OpenAI GPT-4o</option>
-              <option value="claude">Anthropic Claude Sonnet 3.5</option>
+              <option value="gemini">Google Gemini 2.5 Flash (Default)</option>
+              <option value="openai">OpenAI GPT-5.2</option>
+              <option value="claude">Anthropic Claude Sonnet 4.5</option>
             </select>
             <p className="text-sm text-muted-foreground mt-2">
               We automatically use the latest model for each provider
@@ -134,9 +134,9 @@ export default function SettingsPage() {
             <ul className="space-y-1 text-blue-300">
               <li>• Provider: <span className="font-mono">{selectedProvider}</span></li>
               <li>• Model: <span className="font-mono">
-                {selectedProvider === 'gemini' && 'Gemini 2.0 Flash'}
-                {selectedProvider === 'openai' && 'GPT-4o'}
-                {selectedProvider === 'claude' && 'Claude Sonnet 3.5'}
+                {selectedProvider === 'gemini' && 'Gemini 2.5 Flash'}
+                {selectedProvider === 'openai' && 'GPT-5.2'}
+                {selectedProvider === 'claude' && 'Claude Sonnet 4.5'}
               </span></li>
             </ul>
           </div>
@@ -146,9 +146,9 @@ export default function SettingsPage() {
             <ul className="space-y-1 text-muted-foreground">
               <li>• We manage all AI API keys for you - no setup required</li>
               <li>• Choose your preferred provider based on your needs</li>
-              <li>• Gemini 2.0 Flash: Fastest processing speed</li>
-              <li>• GPT-4o: Latest OpenAI model with excellent quality</li>
-              <li>• Claude Sonnet 3.5: Most capable with best reasoning</li>
+              <li>• Gemini 2.5 Flash: Best price-performance, fastest processing</li>
+              <li>• GPT-5.2: Best for coding and agentic tasks</li>
+              <li>• Claude Sonnet 4.5: Smart model for complex agents and reasoning</li>
             </ul>
           </div>
         </CardContent>
