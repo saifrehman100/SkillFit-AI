@@ -53,14 +53,14 @@ export default function ResumesPage() {
           {resumes.map((resume) => (
             <Card key={resume.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-lg">{resume.filename}</CardTitle>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2 min-w-0 flex-1">
+                    <FileText className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                    <CardTitle className="text-lg break-words">{resume.filename}</CardTitle>
                   </div>
                   <button
                     onClick={() => handleDelete(resume.id)}
-                    className="text-muted-foreground hover:text-destructive transition-colors"
+                    className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
