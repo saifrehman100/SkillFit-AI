@@ -1,0 +1,50 @@
+# Production-only dependencies (no testing/dev tools)
+
+# FastAPI and server
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Database
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+alembic==1.13.1
+pgvector==0.2.4
+
+# LLM SDKs (essential only)
+anthropic==0.18.1
+openai==1.12.0
+google-generativeai==0.3.2
+
+# Document parsing (lightweight)
+PyMuPDF==1.23.21
+python-docx==1.1.0
+pypdf==4.0.1
+
+# Embeddings (local, no API needed)
+sentence-transformers==2.3.1
+numpy==1.26.3
+
+# Async processing
+celery==5.3.6
+redis==5.0.1
+
+# Authentication and security
+python-jose[cryptography]==3.3.0
+bcrypt==3.2.2
+passlib==1.7.4
+python-dotenv==1.0.1
+email-validator==2.1.0
+
+# Utilities
+httpx==0.26.0
+aiofiles==23.2.1
+tenacity==8.2.3
+
+# Cloud Storage
+google-cloud-storage==2.14.0
+
+# Logging
+structlog==24.1.0
