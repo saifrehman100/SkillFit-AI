@@ -1,19 +1,49 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, CheckCircle2, XCircle, Lightbulb, TrendingUp } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, Lightbulb, TrendingUp, Wand2, Copy, Check } from 'lucide-react';
 import { RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useMatch } from '@/lib/hooks/useMatches';
+import { resumesAPI, RewriteResponse } from '@/lib/api/resumes';
 import { formatDate } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export default function MatchDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = parseInt(params.id as string);
   const { match, isLoading } = useMatch(id);
+  const [rewriting, setRewriting] = useState(false);
+  const [rewriteResult, setRewriteResult] = useState<RewriteResponse | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleRewrite = async () => {
+    if (!match) return;
+
+    setRewriting(true);
+    try {
+      const result = await resumesAPI.rewrite(match.resume_id, match.job_id, match.id);
+      setRewriteResult(result.data);
+      toast.success('Resume improved successfully!');
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to rewrite resume');
+    } finally {
+      setRewriting(false);
+    }
+  };
+
+  const handleCopy = () => {
+    if (rewriteResult?.improved_resume) {
+      navigator.clipboard.writeText(rewriteResult.improved_resume);
+      setCopied(true);
+      toast.success('Copied to clipboard!');
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -124,13 +154,25 @@ export default function MatchDetailPage() {
       {match.recommendations && match.recommendations.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Lightbulb className="h-5 w-5 text-yellow-500" />
-              AI-Powered Recommendations
-            </CardTitle>
-            <p className="text-sm text-muted-foreground mt-2">
-              Actionable steps to improve your match score
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Lightbulb className="h-5 w-5 text-yellow-500" />
+                  AI-Powered Recommendations
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Actionable steps to improve your match score
+                </p>
+              </div>
+              <Button
+                onClick={handleRewrite}
+                disabled={rewriting}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              >
+                <Wand2 className="h-4 w-4 mr-2" />
+                {rewriting ? 'Generating...' : 'Rewrite Resume'}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -182,6 +224,71 @@ export default function MatchDetailPage() {
                 );
               })}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Improved Resume */}
+      {rewriteResult && (
+        <Card className="border-primary">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Wand2 className="h-5 w-5 text-primary" />
+                  AI-Improved Resume
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Estimated new score: {rewriteResult.estimated_new_score}%
+                  <span className="text-green-500 ml-2">
+                    (+{rewriteResult.score_improvement} points)
+                  </span>
+                </p>
+              </div>
+              <Button onClick={handleCopy} variant="outline">
+                {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                {copied ? 'Copied!' : 'Copy'}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Key Improvements */}
+            {rewriteResult.key_improvements && rewriteResult.key_improvements.length > 0 && (
+              <div>
+                <h3 className="font-semibold mb-3">Key Improvements:</h3>
+                <ul className="space-y-2">
+                  {rewriteResult.key_improvements.map((improvement, idx) => (
+                    <li key={idx} className="flex gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+                      <span>{improvement}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Improved Resume Text */}
+            <div>
+              <h3 className="font-semibold mb-3">Improved Resume:</h3>
+              <div className="bg-muted/50 p-6 rounded-lg">
+                <pre className="whitespace-pre-wrap font-sans text-sm">{rewriteResult.improved_resume}</pre>
+              </div>
+            </div>
+
+            {/* Changes Summary */}
+            {rewriteResult.changes_summary && rewriteResult.changes_summary.length > 0 && (
+              <div>
+                <h3 className="font-semibold mb-3">Changes Made:</h3>
+                <ul className="space-y-1">
+                  {rewriteResult.changes_summary.map((change, idx) => (
+                    <li key={idx} className="flex gap-2 text-sm text-muted-foreground">
+                      <span>•</span>
+                      <span>{change}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

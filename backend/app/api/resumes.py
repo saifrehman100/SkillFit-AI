@@ -2,7 +2,7 @@
 Resume management endpoints.
 """
 import hashlib
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
@@ -13,8 +13,9 @@ from app.core.config import settings
 from app.core.llm_providers import LLMFactory
 from app.core.storage import get_storage_client
 from app.models.database import get_db
-from app.models.models import User, Resume
+from app.models.models import User, Resume, Job, Match
 from app.services.resume_parser import ResumeParser, ResumeAnalyzer, ResumeParseError
+from app.services.resume_rewriter import ResumeRewriter
 
 router = APIRouter()
 
@@ -201,3 +202,91 @@ async def delete_resume(
     db.commit()
 
     return None
+
+
+@router.post("/{resume_id}/rewrite")
+async def rewrite_resume(
+    resume_id: int,
+    job_id: int,
+    match_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate an improved version of a resume based on match recommendations.
+    Requires a job ID to tailor the resume to.
+    """
+    # Get resume
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found"
+        )
+
+    # Get job
+    job = db.query(Job).filter(
+        Job.id == job_id,
+        Job.user_id == current_user.id
+    ).first()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+
+    # Get match if provided, or find the most recent one
+    if match_id:
+        match = db.query(Match).filter(
+            Match.id == match_id,
+            Match.user_id == current_user.id
+        ).first()
+    else:
+        match = db.query(Match).filter(
+            Match.resume_id == resume_id,
+            Match.job_id == job_id,
+            Match.user_id == current_user.id
+        ).order_by(Match.created_at.desc()).first()
+
+    # Get match data if available
+    match_score = match.match_score if match else 50
+    recommendations = match.recommendations if match else []
+    missing_skills = match.missing_skills if match else []
+
+    try:
+        # Get LLM client
+        api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+        llm_client = LLMFactory.create_client(
+            provider=settings.default_llm_provider,
+            api_key=api_key,
+            model=settings.default_model_name
+        )
+
+        # Rewrite resume
+        rewriter = ResumeRewriter(llm_client)
+        result = await rewriter.rewrite_resume(
+            resume_text=resume.raw_text,
+            job_description=job.description,
+            match_score=match_score,
+            recommendations=recommendations,
+            missing_skills=missing_skills
+        )
+
+        return {
+            "resume_id": resume_id,
+            "job_id": job_id,
+            "match_id": match.id if match else None,
+            "original_score": match_score,
+            **result
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to rewrite resume: {str(e)}"
+        )
