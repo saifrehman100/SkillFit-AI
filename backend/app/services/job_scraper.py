@@ -173,8 +173,10 @@ class JobScraper:
         """Scrape job details from Indeed."""
         try:
             headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Referer": "https://www.indeed.com/",
             }
 
             async with httpx.AsyncClient(follow_redirects=True, timeout=30.0) as client:
@@ -183,31 +185,55 @@ class JobScraper:
 
             soup = BeautifulSoup(response.text, 'html.parser')
 
-            # Extract job title
+            # Extract job title - try multiple selectors
             title = None
-            title_elem = soup.select_one('h1.jobsearch-JobInfoHeader-title, h1.icl-u-xs-mb--xs')
-            if title_elem:
-                title = title_elem.get_text(strip=True)
+            title_selectors = [
+                'h1.jobsearch-JobInfoHeader-title',
+                'h1.icl-u-xs-mb--xs',
+                'h1[class*="jobTitle"]',
+                'h1',
+            ]
+            for selector in title_selectors:
+                title_elem = soup.select_one(selector)
+                if title_elem:
+                    title = title_elem.get_text(strip=True)
+                    break
 
             # Extract company name
             company = None
-            company_elem = soup.select_one('[data-company-name="true"], div.jobsearch-InlineCompanyRating > div')
-            if company_elem:
-                company = company_elem.get_text(strip=True)
+            company_selectors = [
+                '[data-company-name="true"]',
+                'div.jobsearch-InlineCompanyRating > div',
+                '[data-testid="inlineHeader-companyName"]',
+                'div[class*="companyName"]',
+            ]
+            for selector in company_selectors:
+                company_elem = soup.select_one(selector)
+                if company_elem:
+                    company = company_elem.get_text(strip=True)
+                    break
 
             # Extract job description
             description = None
-            desc_elem = soup.select_one('#jobDescriptionText, div.jobsearch-jobDescriptionText')
-            if desc_elem:
-                description = desc_elem.get_text(separator='\n', strip=True)
+            desc_selectors = [
+                '#jobDescriptionText',
+                'div.jobsearch-jobDescriptionText',
+                'div[class*="jobDescription"]',
+                'div[id*="jobDescription"]',
+            ]
+            for selector in desc_selectors:
+                desc_elem = soup.select_one(selector)
+                if desc_elem:
+                    description = desc_elem.get_text(separator='\n', strip=True)
+                    break
 
             if not title:
-                raise JobScraperError("Could not extract job title from Indeed page")
+                raise JobScraperError("Could not extract job title from Indeed page. The page structure may have changed or Indeed is blocking automated access. Please try using 'Add Manually' instead.")
 
             result = {
                 "title": title,
                 "company": company or "Unknown Company",
-                "description": description or "No description available",
+                "description": description or "No description available. Please add job description manually.",
                 "source_url": url,
                 "requirements": None,
             }
@@ -216,11 +242,13 @@ class JobScraper:
             return result
 
         except httpx.HTTPError as e:
-            logger.error("HTTP error scraping Indeed", error=str(e))
-            raise JobScraperError(f"Failed to fetch Indeed page: {str(e)}")
+            logger.error("HTTP error scraping Indeed", error=str(e), status_code=getattr(e.response, 'status_code', None) if hasattr(e, 'response') else None)
+            if hasattr(e, 'response') and e.response.status_code == 403:
+                raise JobScraperError("Indeed is blocking automated access. Please use 'Add Manually' to copy and paste the job details instead.")
+            raise JobScraperError(f"Failed to fetch Indeed page. Please use 'Add Manually' to copy and paste the job details instead.")
         except Exception as e:
             logger.error("Error scraping Indeed", error=str(e))
-            raise JobScraperError(f"Failed to scrape Indeed job: {str(e)}")
+            raise JobScraperError(f"Failed to scrape Indeed job. Please use 'Add Manually' to copy and paste the job details instead.")
 
     @classmethod
     async def _scrape_glassdoor(cls, url: str) -> Dict[str, Any]:
