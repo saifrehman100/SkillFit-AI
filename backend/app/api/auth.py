@@ -112,10 +112,21 @@ async def get_llm_settings(current_user: User = Depends(get_current_user)):
     Get user's LLM preferences.
     System manages API keys - users just select their preferred provider/model.
     """
+    # Check which providers have API keys configured
+    available_providers = []
+    if settings.google_api_key:
+        available_providers.append("gemini")
+    if settings.openai_api_key:
+        available_providers.append("openai")
+    if settings.anthropic_api_key:
+        available_providers.append("claude")
+    if settings.openai_compatible_api_key and settings.openai_compatible_base_url:
+        available_providers.append("openai_compatible")
+
     return LLMSettingsResponse(
         provider=current_user.llm_provider,
         model=current_user.llm_model,
-        available_providers=["gemini", "openai", "claude", "openai_compatible"]
+        available_providers=available_providers
     )
 
 
@@ -129,14 +140,24 @@ async def update_llm_settings(
     Update user's LLM preferences.
     System manages API keys - users only select provider/model preference.
     """
+    # Check which providers have API keys configured
+    available_providers = []
+    if settings.google_api_key:
+        available_providers.append("gemini")
+    if settings.openai_api_key:
+        available_providers.append("openai")
+    if settings.anthropic_api_key:
+        available_providers.append("claude")
+    if settings.openai_compatible_api_key and settings.openai_compatible_base_url:
+        available_providers.append("openai_compatible")
+
     # Update provider if provided
     if settings_data.provider is not None:
-        # Validate provider
-        valid_providers = ["gemini", "openai", "claude", "openai_compatible"]
-        if settings_data.provider not in valid_providers:
+        # Validate that the provider has an API key configured
+        if settings_data.provider not in available_providers:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid provider. Must be one of: {', '.join(valid_providers)}"
+                detail=f"Provider '{settings_data.provider}' is not configured. Available providers: {', '.join(available_providers)}"
             )
         current_user.llm_provider = settings_data.provider
 
@@ -150,7 +171,7 @@ async def update_llm_settings(
     return LLMSettingsResponse(
         provider=current_user.llm_provider,
         model=current_user.llm_model,
-        available_providers=["gemini", "openai", "claude", "openai_compatible"]
+        available_providers=available_providers
     )
 
 

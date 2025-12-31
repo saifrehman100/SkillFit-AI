@@ -12,11 +12,13 @@ import { toast } from 'sonner';
 
 interface LLMSettings {
   provider: string | null;
+  available_providers: string[];
 }
 
 export default function SettingsPage() {
   const { user } = useAuth();
   const [selectedProvider, setSelectedProvider] = useState<string>('gemini');
+  const [availableProviders, setAvailableProviders] = useState<string[]>([]);
   const [savingLLM, setSavingLLM] = useState(false);
   const [loadingLLM, setLoadingLLM] = useState(true);
 
@@ -29,6 +31,9 @@ export default function SettingsPage() {
       const response = await authAPI.getLLMSettings();
       if (response.data.provider) {
         setSelectedProvider(response.data.provider);
+      }
+      if (response.data.available_providers) {
+        setAvailableProviders(response.data.available_providers);
       }
     } catch (error) {
       console.error('Failed to load LLM settings:', error);
@@ -111,10 +116,30 @@ export default function SettingsPage() {
               onChange={(e) => setSelectedProvider(e.target.value)}
               disabled={loadingLLM}
             >
-              <option value="gemini">Google Gemini 2.5 Flash (Default)</option>
-              <option value="openai">OpenAI GPT-5.2</option>
-              <option value="claude">Anthropic Claude Sonnet 4.5</option>
+              {availableProviders.includes('gemini') && (
+                <option value="gemini">Google Gemini 2.5 Flash (Default)</option>
+              )}
+              {availableProviders.includes('openai') && (
+                <option value="openai">OpenAI GPT-5.2</option>
+              )}
+              {availableProviders.includes('claude') && (
+                <option value="claude">Anthropic Claude Sonnet 4.5</option>
+              )}
+              {availableProviders.length === 0 && !loadingLLM && (
+                <option value="">No providers configured</option>
+              )}
             </select>
+            {!loadingLLM && availableProviders.length < 3 && (
+              <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-sm">
+                <p className="font-medium text-yellow-400 mb-1">Limited Providers Available</p>
+                <p className="text-yellow-300">
+                  Only {availableProviders.length} provider(s) configured.
+                  {!availableProviders.includes('openai') && ' OpenAI not configured.'}
+                  {!availableProviders.includes('claude') && ' Claude not configured.'}
+                  {!availableProviders.includes('gemini') && ' Gemini not configured.'}
+                </p>
+              </div>
+            )}
             <p className="text-sm text-muted-foreground mt-2">
               We automatically use the latest model for each provider
             </p>
