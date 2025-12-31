@@ -16,6 +16,9 @@ from app.models.database import get_db
 from app.models.models import User, Resume, Job, Match
 from app.services.resume_parser import ResumeParser, ResumeAnalyzer, ResumeParseError
 from app.services.resume_rewriter import ResumeRewriter
+from app.services.resume_generator import ResumeGenerator
+from app.services.interview_generator import InterviewGenerator
+from fastapi.responses import StreamingResponse
 
 router = APIRouter()
 
@@ -289,4 +292,428 @@ async def rewrite_resume(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to rewrite resume: {str(e)}"
+        )
+
+
+@router.get("/{resume_id}/download-docx")
+async def download_resume_docx(
+    resume_id: int,
+    improved_text: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Download resume as DOCX file.
+    Can download original resume or improved version if improved_text is provided.
+    """
+    # Get resume
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found"
+        )
+
+    try:
+        # Use improved text if provided, otherwise use original
+        resume_text = improved_text if improved_text else resume.raw_text
+
+        # Generate DOCX
+        generator = ResumeGenerator()
+        docx_file = generator.create_professional_docx(
+            resume_text=resume_text,
+            candidate_name=None,  # Could extract from resume
+            filename=f"{resume.filename.rsplit('.', 1)[0]}.docx"
+        )
+
+        # Return as downloadable file
+        return StreamingResponse(
+            docx_file,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": f"attachment; filename={resume.filename.rsplit('.', 1)[0]}.docx"
+            }
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate DOCX: {str(e)}"
+        )
+
+
+@router.get("/{resume_id}/download-pdf")
+async def download_resume_pdf(
+    resume_id: int,
+    improved_text: Optional[str] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Download resume as PDF file.
+    Can download original resume or improved version if improved_text is provided.
+    """
+    # Get resume
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found"
+        )
+
+    try:
+        from reportlab.lib.pagesizes import letter
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import inch
+        from io import BytesIO
+
+        # Use improved text if provided, otherwise use original
+        resume_text = improved_text if improved_text else resume.raw_text
+
+        # Create PDF
+        pdf_buffer = BytesIO()
+        doc = SimpleDocTemplate(pdf_buffer, pagesize=letter,
+                                rightMargin=0.75*inch, leftMargin=0.75*inch,
+                                topMargin=0.75*inch, bottomMargin=0.75*inch)
+
+        styles = getSampleStyleSheet()
+        story = []
+
+        # Parse and add content
+        lines = resume_text.split('\n')
+        for line in lines:
+            line = line.strip()
+            if not line:
+                story.append(Spacer(1, 0.2*inch))
+                continue
+
+            # Detect headers
+            is_header = any(keyword in line.upper() for keyword in [
+                'SUMMARY', 'EXPERIENCE', 'EDUCATION', 'SKILLS',
+                'PROJECTS', 'CERTIFICATIONS'
+            ])
+
+            if is_header:
+                p = Paragraph(line, styles['Heading2'])
+            else:
+                p = Paragraph(line, styles['Normal'])
+
+            story.append(p)
+            story.append(Spacer(1, 0.1*inch))
+
+        doc.build(story)
+        pdf_buffer.seek(0)
+
+        # Return as downloadable file
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={resume.filename.rsplit('.', 1)[0]}.pdf"
+            }
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate PDF: {str(e)}"
+        )
+
+
+@router.post("/{resume_id}/generate-interview")
+async def generate_interview_questions(
+    resume_id: int,
+    job_id: int,
+    match_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate interview preparation questions and talking points.
+    Tailored to the resume and specific job posting.
+    """
+    # Get resume
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found"
+        )
+
+    # Get job
+    job = db.query(Job).filter(
+        Job.id == job_id,
+        Job.user_id == current_user.id
+    ).first()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+
+    # Get match if provided, or find the most recent one
+    match = None
+    if match_id:
+        match = db.query(Match).filter(
+            Match.id == match_id,
+            Match.user_id == current_user.id
+        ).first()
+    else:
+        match = db.query(Match).filter(
+            Match.resume_id == resume_id,
+            Match.job_id == job_id,
+            Match.user_id == current_user.id
+        ).order_by(Match.created_at.desc()).first()
+
+    # Get match data if available
+    match_score = match.match_score if match else None
+    missing_skills = match.missing_skills if match else None
+    recommendations = match.recommendations if match else None
+
+    try:
+        # Get LLM client
+        api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+        llm_client = LLMFactory.create_client(
+            provider=settings.default_llm_provider,
+            api_key=api_key,
+            model=settings.default_model_name
+        )
+
+        # Generate interview questions
+        generator = InterviewGenerator(llm_client)
+        result = await generator.generate_questions(
+            resume_text=resume.raw_text,
+            job_description=job.description,
+            job_title=job.title,
+            company=job.company or "the company",
+            match_score=match_score,
+            missing_skills=missing_skills,
+            recommendations=recommendations
+        )
+
+        return {
+            "resume_id": resume_id,
+            "job_id": job_id,
+            "match_id": match.id if match else None,
+            "job_title": job.title,
+            "company": job.company,
+            **result
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate interview questions: {str(e)}"
+        )
+
+
+@router.get("/{resume_id}/interview-prep-docx")
+async def download_interview_prep_docx(
+    resume_id: int,
+    job_id: int,
+    match_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Download interview preparation guide as DOCX.
+    Generates questions and talking points tailored to the resume and job.
+    """
+    # Get resume
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found"
+        )
+
+    # Get job
+    job = db.query(Job).filter(
+        Job.id == job_id,
+        Job.user_id == current_user.id
+    ).first()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+
+    # Get match if available
+    match = None
+    if match_id:
+        match = db.query(Match).filter(
+            Match.id == match_id,
+            Match.user_id == current_user.id
+        ).first()
+    else:
+        match = db.query(Match).filter(
+            Match.resume_id == resume_id,
+            Match.job_id == job_id,
+            Match.user_id == current_user.id
+        ).order_by(Match.created_at.desc()).first()
+
+    match_score = match.match_score if match else None
+    missing_skills = match.missing_skills if match else None
+    recommendations = match.recommendations if match else None
+
+    try:
+        # Get LLM client
+        api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+        llm_client = LLMFactory.create_client(
+            provider=settings.default_llm_provider,
+            api_key=api_key,
+            model=settings.default_model_name
+        )
+
+        # Generate interview questions
+        generator = InterviewGenerator(llm_client)
+        interview_data = await generator.generate_questions(
+            resume_text=resume.raw_text,
+            job_description=job.description,
+            job_title=job.title,
+            company=job.company or "Company",
+            match_score=match_score,
+            missing_skills=missing_skills,
+            recommendations=recommendations
+        )
+
+        # Create DOCX
+        docx_file = InterviewGenerator.create_docx(
+            interview_data=interview_data,
+            job_title=job.title,
+            company=job.company or "Company"
+        )
+
+        # Return as downloadable file
+        filename = f"interview_prep_{job.title.replace(' ', '_')}.docx"
+        return StreamingResponse(
+            docx_file,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate interview prep DOCX: {str(e)}"
+        )
+
+
+@router.get("/{resume_id}/interview-prep-pdf")
+async def download_interview_prep_pdf(
+    resume_id: int,
+    job_id: int,
+    match_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Download interview preparation guide as PDF.
+    Generates questions and talking points tailored to the resume and job.
+    """
+    # Get resume
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found"
+        )
+
+    # Get job
+    job = db.query(Job).filter(
+        Job.id == job_id,
+        Job.user_id == current_user.id
+    ).first()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+
+    # Get match if available
+    match = None
+    if match_id:
+        match = db.query(Match).filter(
+            Match.id == match_id,
+            Match.user_id == current_user.id
+        ).first()
+    else:
+        match = db.query(Match).filter(
+            Match.resume_id == resume_id,
+            Match.job_id == job_id,
+            Match.user_id == current_user.id
+        ).order_by(Match.created_at.desc()).first()
+
+    match_score = match.match_score if match else None
+    missing_skills = match.missing_skills if match else None
+    recommendations = match.recommendations if match else None
+
+    try:
+        # Get LLM client
+        api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+        llm_client = LLMFactory.create_client(
+            provider=settings.default_llm_provider,
+            api_key=api_key,
+            model=settings.default_model_name
+        )
+
+        # Generate interview questions
+        generator = InterviewGenerator(llm_client)
+        interview_data = await generator.generate_questions(
+            resume_text=resume.raw_text,
+            job_description=job.description,
+            job_title=job.title,
+            company=job.company or "Company",
+            match_score=match_score,
+            missing_skills=missing_skills,
+            recommendations=recommendations
+        )
+
+        # Create PDF
+        pdf_file = InterviewGenerator.create_pdf(
+            interview_data=interview_data,
+            job_title=job.title,
+            company=job.company or "Company"
+        )
+
+        # Return as downloadable file
+        filename = f"interview_prep_{job.title.replace(' ', '_')}.pdf"
+        return StreamingResponse(
+            pdf_file,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate interview prep PDF: {str(e)}"
         )

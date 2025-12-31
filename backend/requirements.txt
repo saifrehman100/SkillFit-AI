@@ -19,12 +19,13 @@ langchain-anthropic==0.1.1
 langchain-openai==0.0.5
 langchain-google-genai==0.0.6
 
-# Document parsing
+# Document parsing and generation
 PyMuPDF==1.23.21
 python-docx==1.1.0
 pypdf==4.0.1
 unstructured==0.12.3
 python-magic==0.4.27
+reportlab==4.0.9
 
 # Embeddings and vector search
 sentence-transformers==2.3.1
