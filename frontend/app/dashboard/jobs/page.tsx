@@ -53,14 +53,14 @@ export default function JobsPage() {
           {jobs.map((job) => (
             <Card key={job.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="h-5 w-5 text-primary" />
-                    <CardTitle className="text-lg">{job.title}</CardTitle>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2 min-w-0 flex-1">
+                    <Briefcase className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                    <CardTitle className="text-lg break-words">{job.title}</CardTitle>
                   </div>
                   <button
                     onClick={() => handleDelete(job.id)}
-                    className="text-muted-foreground hover:text-destructive transition-colors"
+                    className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -71,7 +71,7 @@ export default function JobsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm line-clamp-3">{job.description}</p>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-2">
                   <Badge variant={job.is_active ? 'default' : 'secondary'}>
                     {job.is_active ? 'Active' : 'Inactive'}
                   </Badge>
@@ -80,7 +80,7 @@ export default function JobsPage() {
                   </span>
                 </div>
                 <Link href={`/dashboard/jobs/${job.id}`}>
-                  <Button variant="outline" size="sm" className="w-full">
+                  <Button variant="outline" size="sm" className="w-full mt-2">
                     View & Match
                   </Button>
                 </Link>
