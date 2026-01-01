@@ -1,7 +1,10 @@
 """
 Resume-Job matching endpoints.
 """
-from typing import List
+from typing import List, Optional
+from pydantic import BaseModel
+from fastapi.responses import StreamingResponse
+import io
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -13,10 +16,33 @@ from app.core.llm_providers import LLMFactory
 from app.models.database import get_db
 from app.models.models import User, Resume, Job, Match, APIUsage
 from app.services.job_matcher import JobMatcher
+from app.services.interview_prep import InterviewPrepGenerator
+from app.services.cover_letter import CoverLetterGenerator
+from app.services.docx_generator import DocxGenerator
+from app.services.pdf_generator import PdfGenerator
 from app.core.logging_config import get_logger
 
 router = APIRouter()
 logger = get_logger(__name__)
+
+
+# Schemas for interview prep and cover letter
+class InterviewPrepResponse(BaseModel):
+    technical_questions: List[dict]
+    behavioral_questions: List[dict]
+    gap_questions: List[dict]
+    talking_points: List[str]
+
+
+class CoverLetterRequest(BaseModel):
+    tone: Optional[str] = "professional"
+
+
+class CoverLetterResponse(BaseModel):
+    cover_letter: str
+    candidate_name: str
+    company: str
+    job_title: str
 
 
 @router.post("/", response_model=MatchResponse, status_code=status.HTTP_201_CREATED)
@@ -382,3 +408,376 @@ async def delete_match(
     db.commit()
 
     return None
+
+
+@router.post("/{match_id}/interview-prep", response_model=InterviewPrepResponse)
+async def generate_interview_prep(
+    match_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate interview preparation questions based on the match.
+    """
+    # Get match
+    match = db.query(Match).filter(
+        Match.id == match_id,
+        Match.user_id == current_user.id
+    ).first()
+
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Match not found"
+        )
+
+    # Get resume and job
+    resume = db.query(Resume).filter(Resume.id == match.resume_id).first()
+    job = db.query(Job).filter(Job.id == match.job_id).first()
+
+    if not resume or not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume or job not found"
+        )
+
+    # Get LLM client
+    provider = current_user.llm_provider or settings.default_llm_provider
+    model = current_user.llm_model or settings.default_model_name
+    api_key = get_user_llm_api_key(current_user, provider)
+
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No API key configured for provider: {provider}"
+        )
+
+    try:
+        llm_client = LLMFactory.create_client(
+            provider=provider,
+            api_key=api_key,
+            model=model
+        )
+
+        # Generate interview prep
+        generator = InterviewPrepGenerator(llm_client)
+        result = await generator.generate(
+            resume_text=resume.raw_text,
+            job_description=f"{job.title} at {job.company or 'Company'}\n\n{job.description}\n\n{job.requirements or ''}"
+        )
+
+        logger.info(
+            "Interview prep generated",
+            match_id=match_id
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error("Interview prep generation failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Interview prep generation failed: {str(e)}"
+        )
+
+
+@router.post("/{match_id}/cover-letter", response_model=CoverLetterResponse)
+async def generate_cover_letter(
+    match_id: int,
+    request: CoverLetterRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate a cover letter based on the match.
+    """
+    # Get match
+    match = db.query(Match).filter(
+        Match.id == match_id,
+        Match.user_id == current_user.id
+    ).first()
+
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Match not found"
+        )
+
+    # Get resume and job
+    resume = db.query(Resume).filter(Resume.id == match.resume_id).first()
+    job = db.query(Job).filter(Job.id == match.job_id).first()
+
+    if not resume or not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume or job not found"
+        )
+
+    # Get LLM client
+    provider = current_user.llm_provider or settings.default_llm_provider
+    model = current_user.llm_model or settings.default_model_name
+    api_key = get_user_llm_api_key(current_user, provider)
+
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No API key configured for provider: {provider}"
+        )
+
+    try:
+        llm_client = LLMFactory.create_client(
+            provider=provider,
+            api_key=api_key,
+            model=model
+        )
+
+        # Generate cover letter
+        generator = CoverLetterGenerator(llm_client)
+        result = await generator.generate(
+            resume_text=resume.raw_text,
+            job_title=job.title,
+            company=job.company or "the company",
+            job_description=f"{job.description}\n\n{job.requirements or ''}",
+            tone=request.tone
+        )
+
+        logger.info(
+            "Cover letter generated",
+            match_id=match_id,
+            tone=request.tone
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error("Cover letter generation failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Cover letter generation failed: {str(e)}"
+        )
+
+
+@router.get("/{match_id}/interview-prep/docx")
+async def download_interview_prep_docx(
+    match_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Download interview prep as DOCX.
+    """
+    # Get match
+    match = db.query(Match).filter(
+        Match.id == match_id,
+        Match.user_id == current_user.id
+    ).first()
+
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Match not found"
+        )
+
+    # Get resume and job
+    resume = db.query(Resume).filter(Resume.id == match.resume_id).first()
+    job = db.query(Job).filter(Job.id == match.job_id).first()
+
+    if not resume or not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume or job not found"
+        )
+
+    # Get LLM client
+    provider = current_user.llm_provider or settings.default_llm_provider
+    model = current_user.llm_model or settings.default_model_name
+    api_key = get_user_llm_api_key(current_user, provider)
+
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No API key configured for provider: {provider}"
+        )
+
+    try:
+        llm_client = LLMFactory.create_client(
+            provider=provider,
+            api_key=api_key,
+            model=model
+        )
+
+        # Generate interview prep
+        generator = InterviewPrepGenerator(llm_client)
+        result = await generator.generate(
+            resume_text=resume.raw_text,
+            job_description=f"{job.title} at {job.company or 'Company'}\n\n{job.description}\n\n{job.requirements or ''}"
+        )
+
+        # Generate DOCX
+        docx_gen = DocxGenerator()
+        buffer = docx_gen.generate_interview_prep_docx(result, job.title, job.company)
+
+        return StreamingResponse(
+            io.BytesIO(buffer.getvalue()),
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f"attachment; filename=interview-prep-{match_id}.docx"}
+        )
+
+    except Exception as e:
+        logger.error("Interview prep DOCX generation failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Interview prep DOCX generation failed: {str(e)}"
+        )
+
+
+@router.get("/{match_id}/interview-prep/pdf")
+async def download_interview_prep_pdf(
+    match_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Download interview prep as PDF.
+    """
+    # Get match
+    match = db.query(Match).filter(
+        Match.id == match_id,
+        Match.user_id == current_user.id
+    ).first()
+
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Match not found"
+        )
+
+    # Get resume and job
+    resume = db.query(Resume).filter(Resume.id == match.resume_id).first()
+    job = db.query(Job).filter(Job.id == match.job_id).first()
+
+    if not resume or not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume or job not found"
+        )
+
+    # Get LLM client
+    provider = current_user.llm_provider or settings.default_llm_provider
+    model = current_user.llm_model or settings.default_model_name
+    api_key = get_user_llm_api_key(current_user, provider)
+
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No API key configured for provider: {provider}"
+        )
+
+    try:
+        llm_client = LLMFactory.create_client(
+            provider=provider,
+            api_key=api_key,
+            model=model
+        )
+
+        # Generate interview prep
+        generator = InterviewPrepGenerator(llm_client)
+        result = await generator.generate(
+            resume_text=resume.raw_text,
+            job_description=f"{job.title} at {job.company or 'Company'}\n\n{job.description}\n\n{job.requirements or ''}"
+        )
+
+        # Generate PDF
+        pdf_gen = PdfGenerator()
+        buffer = pdf_gen.generate_interview_prep_pdf(result, job.title, job.company)
+
+        return StreamingResponse(
+            io.BytesIO(buffer.getvalue()),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=interview-prep-{match_id}.pdf"}
+        )
+
+    except Exception as e:
+        logger.error("Interview prep PDF generation failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Interview prep PDF generation failed: {str(e)}"
+        )
+
+
+@router.get("/{match_id}/cover-letter/docx")
+async def download_cover_letter_docx(
+    match_id: int,
+    tone: str = "professional",
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Download cover letter as DOCX.
+    """
+    # Get match
+    match = db.query(Match).filter(
+        Match.id == match_id,
+        Match.user_id == current_user.id
+    ).first()
+
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Match not found"
+        )
+
+    # Get resume and job
+    resume = db.query(Resume).filter(Resume.id == match.resume_id).first()
+    job = db.query(Job).filter(Job.id == match.job_id).first()
+
+    if not resume or not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume or job not found"
+        )
+
+    # Get LLM client
+    provider = current_user.llm_provider or settings.default_llm_provider
+    model = current_user.llm_model or settings.default_model_name
+    api_key = get_user_llm_api_key(current_user, provider)
+
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No API key configured for provider: {provider}"
+        )
+
+    try:
+        llm_client = LLMFactory.create_client(
+            provider=provider,
+            api_key=api_key,
+            model=model
+        )
+
+        # Generate cover letter
+        generator = CoverLetterGenerator(llm_client)
+        result = await generator.generate(
+            resume_text=resume.raw_text,
+            job_title=job.title,
+            company=job.company or "the company",
+            job_description=f"{job.description}\n\n{job.requirements or ''}",
+            tone=tone
+        )
+
+        # Generate DOCX
+        docx_gen = DocxGenerator()
+        buffer = docx_gen.generate_cover_letter_docx(result["cover_letter"], job.title, job.company)
+
+        return StreamingResponse(
+            io.BytesIO(buffer.getvalue()),
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f"attachment; filename=cover-letter-{match_id}.docx"}
+        )
+
+    except Exception as e:
+        logger.error("Cover letter DOCX generation failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Cover letter DOCX generation failed: {str(e)}"
+        )
