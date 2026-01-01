@@ -1,7 +1,7 @@
 """add ats fields to matches
 
-Revision ID: 003
-Revises: 002
+Revision ID: 007
+Revises: 006
 Create Date: 2025-01-01
 
 """
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '003'
-down_revision = '002'
+revision = '007'
+down_revision = '006'
 branch_labels = None
 depends_on = None
 

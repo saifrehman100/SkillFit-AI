@@ -31,11 +31,14 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
-    hashed_password = Column(String(255), nullable=False)
+    hashed_password = Column(String(255), nullable=True)  # Nullable for OAuth users
     api_key = Column(String(64), unique=True, index=True, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # OAuth
+    google_id = Column(String(255), unique=True, nullable=True, index=True)  # Google OAuth ID
 
     # LLM Preferences (system manages API keys, user just selects preference)
     llm_provider = Column(String(50), nullable=True)  # User's preferred LLM provider
@@ -232,6 +235,24 @@ class BatchJob(Base):
         Index("idx_batch_status", "status"),
         Index("idx_batch_user_status", "user_id", "status"),
     )
+
+
+class Analytics(Base):
+    """Analytics events for tracking user activity and platform usage."""
+
+    __tablename__ = "analytics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # Nullable for anonymous events
+    event_type = Column(String(100), nullable=False, index=True)  # page_view, match_created, resume_uploaded, etc.
+    event_data = Column(JSON, nullable=True)  # Additional event metadata
+    ip_address = Column(String(45), nullable=True)  # IPv4 or IPv6
+    user_agent = Column(Text, nullable=True)
+    referrer = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    # Relationships
+    user = relationship("User")
 
 
 class APIUsage(Base):

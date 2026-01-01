@@ -29,6 +29,7 @@ from app.core.config import settings
 from app.models.database import get_db
 from app.models.models import User
 from app.services.email_service import email_service
+from app.services.oauth_service import OAuthService
 
 router = APIRouter()
 
@@ -315,4 +316,90 @@ async def reset_password(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to reset password: {str(e)}"
+        )
+
+
+@router.post("/google", response_model=Token)
+async def google_auth(
+    code: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Authenticate or register user with Google OAuth.
+
+    Args:
+        code: Authorization code from Google OAuth callback
+
+    Returns:
+        JWT access token
+    """
+    # Check if Google OAuth is configured
+    if not settings.google_client_id or not settings.google_client_secret:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Google OAuth is not configured on the server"
+        )
+
+    try:
+        # Initialize OAuth service
+        oauth_service = OAuthService(
+            google_client_id=settings.google_client_id,
+            google_client_secret=settings.google_client_secret,
+            redirect_uri=settings.google_redirect_uri
+        )
+
+        # Authenticate with Google
+        user_data = await oauth_service.authenticate_with_google(code)
+
+        if not user_data.get("email_verified"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email not verified with Google"
+            )
+
+        email = user_data["email"]
+        google_id = user_data["google_id"]
+
+        # Check if user exists by email or Google ID
+        user = db.query(User).filter(
+            (User.email == email) | (User.google_id == google_id)
+        ).first()
+
+        if user:
+            # Existing user - link Google ID if not already linked
+            if not user.google_id:
+                user.google_id = google_id
+                db.commit()
+                db.refresh(user)
+
+        else:
+            # New user - create account
+            user = User(
+                email=email,
+                google_id=google_id,
+                hashed_password=None,  # OAuth users don't have password
+                api_key=generate_api_key(),
+                is_active=True
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+        # Generate JWT access token
+        access_token = create_access_token(
+            data={"sub": user.email},
+            expires_delta=timedelta(minutes=settings.access_token_expire_minutes)
+        )
+
+        return Token(access_token=access_token, token_type="bearer")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        from app.core.logging_config import get_logger
+        logger = get_logger(__name__)
+        logger.error("Google OAuth failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to authenticate with Google: {str(e)}"
         )

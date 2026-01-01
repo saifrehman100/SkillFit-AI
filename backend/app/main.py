@@ -11,7 +11,7 @@ from fastapi.exceptions import RequestValidationError
 
 from app.core.config import settings
 from app.core.logging_config import configure_logging, get_logger
-from app.api import auth, resumes, jobs, matches, health, linkedin, applications
+from app.api import auth, resumes, jobs, matches, health, linkedin, applications, analytics
 
 # Configure logging
 configure_logging()
@@ -89,6 +89,7 @@ app.include_router(jobs.router, prefix="/api/v1/jobs", tags=["Jobs"])
 app.include_router(matches.router, prefix="/api/v1/matches", tags=["Matches"])
 app.include_router(applications.router, prefix="/api/v1/applications", tags=["Applications"])
 app.include_router(linkedin.router, prefix="/api/v1/linkedin", tags=["LinkedIn Integration 🔗"])
+app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Analytics"])
 
 
 @app.get("/")

@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     algorithm: str = Field(default="HS256")
     access_token_expire_minutes: int = Field(default=30)
 
+    # OAuth (Google)
+    google_client_id: Optional[str] = Field(default=None)
+    google_client_secret: Optional[str] = Field(default=None)
+    google_redirect_uri: Optional[str] = Field(default=None)
+
     # LLM API Keys
     anthropic_api_key: Optional[str] = Field(default=None)
     openai_api_key: Optional[str] = Field(default=None)
