@@ -400,7 +400,7 @@ async def google_auth(
 
         # Generate JWT access token
         access_token = create_access_token(
-            data={"sub": user.id},
+            data={"sub": user.email},
             expires_delta=timedelta(minutes=settings.access_token_expire_minutes)
         )
 
