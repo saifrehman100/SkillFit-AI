@@ -3,6 +3,7 @@ Authentication endpoints for user registration and login.
 """
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
+from pydantic import BaseModel
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
