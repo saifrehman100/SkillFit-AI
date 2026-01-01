@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Any
 import json
 
 from app.core.logging_config import get_logger
+from app.services.ats_analyzer import ATSAnalyzer
 
 logger = get_logger(__name__)
 
@@ -142,6 +143,34 @@ Respond with ONLY a JSON object:
 
             # Parse JSON response
             match_data = self._parse_response(response.content)
+
+            # Run ATS analysis (in parallel with match scoring)
+            try:
+                ats_analyzer = ATSAnalyzer(self.llm_client)
+                ats_result = ats_analyzer.analyze_ats_score(
+                    resume_text=resume_text,
+                    job_description=job_description
+                )
+
+                # Add ATS data to match results
+                match_data["ats_score"] = ats_result["ats_score"]
+                match_data["keyword_matches"] = ats_result["keyword_analysis"]
+                match_data["ats_issues"] = {
+                    "formatting_score": ats_result["formatting_score"],
+                    "section_score": ats_result["section_score"],
+                    "contact_score": ats_result["contact_score"],
+                    "issues": ats_result["issues"],
+                    "recommendations": ats_result["recommendations"]
+                }
+
+                logger.info("ATS analysis included in match", ats_score=ats_result["ats_score"])
+
+            except Exception as e:
+                logger.error("ATS analysis failed, continuing without it", error=str(e))
+                # Continue without ATS data if it fails
+                match_data["ats_score"] = None
+                match_data["keyword_matches"] = None
+                match_data["ats_issues"] = None
 
             # Add metadata
             match_data["_metadata"] = {

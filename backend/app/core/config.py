@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     port: int = Field(default=8000)
     workers: int = Field(default=4)
     allowed_origins: str = Field(default="http://localhost:3000")
+    frontend_url: str = Field(default="http://localhost:3000")
 
     # Database
     database_url: str = Field(

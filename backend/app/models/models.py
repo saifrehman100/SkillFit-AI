@@ -136,6 +136,11 @@ class Match(Base):
     recommendations = Column(JSON, nullable=True)
     explanation = Column(Text, nullable=True)
 
+    # ATS Analysis
+    ats_score = Column(Float, nullable=True)  # 0-100 ATS compatibility score
+    keyword_matches = Column(JSON, nullable=True)  # Matched and missing keywords
+    ats_issues = Column(JSON, nullable=True)  # Formatting issues and recommendations
+
     # LLM metadata
     llm_provider = Column(String(50), nullable=True)
     llm_model = Column(String(100), nullable=True)

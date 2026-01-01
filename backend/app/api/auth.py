@@ -2,6 +2,7 @@
 Authentication endpoints for user registration and login.
 """
 from datetime import timedelta
+from jose import JWTError, jwt
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -13,7 +14,9 @@ from app.api.schemas import (
     Token,
     LLMSettingsUpdate,
     LLMSettingsResponse,
-    UsageResponse
+    UsageResponse,
+    ForgotPasswordRequest,
+    ResetPasswordRequest
 )
 from app.core.auth import (
     create_access_token,
@@ -25,6 +28,7 @@ from app.core.auth import (
 from app.core.config import settings
 from app.models.database import get_db
 from app.models.models import User
+from app.services.email_service import email_service
 
 router = APIRouter()
 
@@ -197,3 +201,118 @@ async def get_usage(current_user: User = Depends(get_current_user)):
         matches_remaining=remaining,
         can_create_match=remaining > 0
     )
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Request a password reset email.
+    Sends an email with a password reset token.
+    """
+    # Find user by email
+    user = db.query(User).filter(User.email == request.email).first()
+
+    # Always return success to prevent email enumeration
+    # (Don't reveal whether email exists in database)
+    if not user:
+        return {
+            "message": "If that email address is in our system, we have sent a password reset link to it."
+        }
+
+    # Create password reset token (expires in 1 hour)
+    reset_token_data = {
+        "sub": user.email,
+        "type": "password_reset"
+    }
+    reset_token = jwt.encode(
+        {**reset_token_data, "exp": timedelta(hours=1)},
+        settings.secret_key,
+        algorithm=settings.algorithm
+    )
+
+    # Send password reset email
+    frontend_url = settings.frontend_url or "http://localhost:3000"
+
+    try:
+        email_sent = email_service.send_password_reset_email(
+            to_email=user.email,
+            reset_token=reset_token,
+            frontend_url=frontend_url
+        )
+
+        if not email_sent:
+            # In development mode without SMTP, log the token
+            from app.core.logging_config import get_logger
+            logger = get_logger(__name__)
+            logger.info(
+                "Password reset token (SMTP not configured)",
+                email=user.email,
+                token=reset_token
+            )
+
+    except Exception as e:
+        from app.core.logging_config import get_logger
+        logger = get_logger(__name__)
+        logger.error("Failed to send password reset email", error=str(e))
+        # Continue anyway to not reveal if email exists
+
+    return {
+        "message": "If that email address is in our system, we have sent a password reset link to it."
+    }
+
+
+@router.post("/reset-password")
+async def reset_password(
+    request: ResetPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Reset password using a valid reset token.
+    """
+    try:
+        # Verify and decode token
+        payload = jwt.decode(
+            request.token,
+            settings.secret_key,
+            algorithms=[settings.algorithm]
+        )
+
+        email = payload.get("sub")
+        token_type = payload.get("type")
+
+        if not email or token_type != "password_reset":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid reset token"
+            )
+
+        # Find user
+        user = db.query(User).filter(User.email == email).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid reset token"
+            )
+
+        # Update password
+        user.hashed_password = get_password_hash(request.new_password)
+        db.commit()
+
+        return {
+            "message": "Password has been reset successfully. You can now login with your new password."
+        }
+
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to reset password: {str(e)}"
+        )

@@ -18,6 +18,7 @@ from app.services.resume_parser import ResumeParser, ResumeAnalyzer, ResumeParse
 from app.services.resume_rewriter import ResumeRewriter
 from app.services.resume_generator import ResumeGenerator
 from app.services.interview_generator import InterviewGenerator
+from app.services.cover_letter_generator import CoverLetterGenerator
 from fastapi.responses import StreamingResponse
 
 router = APIRouter()
@@ -716,4 +717,234 @@ async def download_interview_prep_pdf(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate interview prep PDF: {str(e)}"
+        )
+
+
+@router.post("/{resume_id}/generate-cover-letter")
+async def generate_cover_letter(
+    resume_id: int,
+    job_id: int,
+    tone: str = "professional",
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate a tailored cover letter for a specific job.
+
+    Args:
+        tone: One of 'professional', 'enthusiastic', or 'formal'
+    """
+    # Get resume
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found"
+        )
+
+    # Get job
+    job = db.query(Job).filter(
+        Job.id == job_id,
+        Job.user_id == current_user.id
+    ).first()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+
+    try:
+        # Get LLM client
+        api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+        llm_client = LLMFactory.create_client(
+            provider=settings.default_llm_provider,
+            api_key=api_key,
+            model=settings.default_model_name
+        )
+
+        # Generate cover letter
+        generator = CoverLetterGenerator(llm_client)
+        result = await generator.generate(
+            resume_text=resume.raw_text,
+            job_description=job.description,
+            job_title=job.title,
+            company=job.company or "the company",
+            tone=tone
+        )
+
+        return {
+            "resume_id": resume_id,
+            "job_id": job_id,
+            "job_title": job.title,
+            "company": job.company,
+            **result
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate cover letter: {str(e)}"
+        )
+
+
+@router.get("/{resume_id}/cover-letter-docx")
+async def download_cover_letter_docx(
+    resume_id: int,
+    job_id: int,
+    tone: str = "professional",
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Download cover letter as DOCX.
+    """
+    # Get resume
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found"
+        )
+
+    # Get job
+    job = db.query(Job).filter(
+        Job.id == job_id,
+        Job.user_id == current_user.id
+    ).first()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+
+    try:
+        # Get LLM client
+        api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+        llm_client = LLMFactory.create_client(
+            provider=settings.default_llm_provider,
+            api_key=api_key,
+            model=settings.default_model_name
+        )
+
+        # Generate cover letter
+        generator = CoverLetterGenerator(llm_client)
+        cover_letter_data = await generator.generate(
+            resume_text=resume.raw_text,
+            job_description=job.description,
+            job_title=job.title,
+            company=job.company or "Company",
+            tone=tone
+        )
+
+        # Create DOCX
+        docx_file = CoverLetterGenerator.create_docx(
+            cover_letter_text=cover_letter_data["cover_letter"],
+            candidate_name=cover_letter_data["candidate_name"],
+            company=job.company or "Company",
+            job_title=job.title
+        )
+
+        # Return as downloadable file
+        filename = f"cover_letter_{job.company or 'Company'}_{job.title.replace(' ', '_')}.docx"
+        return StreamingResponse(
+            docx_file,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate cover letter DOCX: {str(e)}"
+        )
+
+
+@router.get("/{resume_id}/cover-letter-pdf")
+async def download_cover_letter_pdf(
+    resume_id: int,
+    job_id: int,
+    tone: str = "professional",
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Download cover letter as PDF.
+    """
+    # Get resume
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found"
+        )
+
+    # Get job
+    job = db.query(Job).filter(
+        Job.id == job_id,
+        Job.user_id == current_user.id
+    ).first()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+
+    try:
+        # Get LLM client
+        api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+        llm_client = LLMFactory.create_client(
+            provider=settings.default_llm_provider,
+            api_key=api_key,
+            model=settings.default_model_name
+        )
+
+        # Generate cover letter
+        generator = CoverLetterGenerator(llm_client)
+        cover_letter_data = await generator.generate(
+            resume_text=resume.raw_text,
+            job_description=job.description,
+            job_title=job.title,
+            company=job.company or "Company",
+            tone=tone
+        )
+
+        # Create PDF
+        pdf_file = CoverLetterGenerator.create_pdf(
+            cover_letter_text=cover_letter_data["cover_letter"],
+            candidate_name=cover_letter_data["candidate_name"],
+            company=job.company or "Company",
+            job_title=job.title
+        )
+
+        # Return as downloadable file
+        filename = f"cover_letter_{job.company or 'Company'}_{job.title.replace(' ', '_')}.pdf"
+        return StreamingResponse(
+            pdf_file,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate cover letter PDF: {str(e)}"
         )

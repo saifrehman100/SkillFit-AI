@@ -63,6 +63,15 @@ class Token(BaseModel):
     token_type: str = "bearer"
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8)
+
+
 # Resume schemas
 class ResumeUpload(BaseModel):
     analyze: bool = Field(default=True, description="Run LLM analysis on upload")
@@ -137,6 +146,10 @@ class MatchResponse(BaseModel):
     llm_provider: Optional[str]
     llm_model: Optional[str]
     created_at: datetime
+    # ATS Analysis fields
+    ats_score: Optional[float] = None
+    keyword_matches: Optional[Dict[str, Any]] = None
+    ats_issues: Optional[Dict[str, Any]] = None
     # Note: tokens_used and cost_estimate are stored in DB but not exposed to users
 
     class Config:
