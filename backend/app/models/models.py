@@ -145,6 +145,11 @@ class Match(Base):
     keyword_matches = Column(JSON, nullable=True)  # Matched and missing keywords
     ats_issues = Column(JSON, nullable=True)  # Formatting issues and recommendations
 
+    # Generated Content (Phase 2)
+    interview_prep_data = Column(JSON, nullable=True)  # Cached interview prep questions
+    cover_letter_data = Column(JSON, nullable=True)  # Cached cover letter
+    improved_resume_data = Column(JSON, nullable=True)  # Cached improved resume
+
     # LLM metadata
     llm_provider = Column(String(50), nullable=True)
     llm_model = Column(String(100), nullable=True)

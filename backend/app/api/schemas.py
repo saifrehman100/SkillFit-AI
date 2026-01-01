@@ -150,6 +150,10 @@ class MatchResponse(BaseModel):
     ats_score: Optional[float] = None
     keyword_matches: Optional[Dict[str, Any]] = None
     ats_issues: Optional[Dict[str, Any]] = None
+    # Cached generated content
+    interview_prep_data: Optional[Dict[str, Any]] = None
+    cover_letter_data: Optional[Dict[str, Any]] = None
+    improved_resume_data: Optional[Dict[str, Any]] = None
     # Note: tokens_used and cost_estimate are stored in DB but not exposed to users
 
     class Config:

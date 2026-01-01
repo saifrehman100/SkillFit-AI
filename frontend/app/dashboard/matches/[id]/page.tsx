@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft, CheckCircle2, XCircle, Lightbulb, TrendingUp, Wand2, Copy, Check,
@@ -36,6 +36,31 @@ export default function MatchDetailPage() {
   const [generatingCoverLetter, setGeneratingCoverLetter] = useState(false);
   const [downloadingCoverLetter, setDownloadingCoverLetter] = useState(false);
   const [coverLetterTone, setCoverLetterTone] = useState<'professional' | 'enthusiastic' | 'formal'>('professional');
+
+  // Load cached data when match loads
+  useEffect(() => {
+    if (match) {
+      // Load cached interview prep
+      if (match.interview_prep_data) {
+        setInterviewPrep(match.interview_prep_data as InterviewPrepResponse);
+      }
+
+      // Load cached cover letter
+      if (match.cover_letter_data) {
+        setCoverLetter(match.cover_letter_data as CoverLetterResponse);
+        // Set tone from cached data
+        const cachedTone = match.cover_letter_data.tone as 'professional' | 'enthusiastic' | 'formal';
+        if (cachedTone) {
+          setCoverLetterTone(cachedTone);
+        }
+      }
+
+      // Load cached improved resume
+      if (match.improved_resume_data) {
+        setRewriteResult(match.improved_resume_data as RewriteResponse);
+      }
+    }
+  }, [match]);
 
   const handleRewrite = async () => {
     if (!match) return;

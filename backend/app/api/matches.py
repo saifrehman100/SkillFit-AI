@@ -413,11 +413,13 @@ async def delete_match(
 @router.post("/{match_id}/interview-prep", response_model=InterviewPrepResponse)
 async def generate_interview_prep(
     match_id: int,
+    regenerate: bool = False,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Generate interview preparation questions based on the match.
+    Returns cached data if available unless regenerate=true.
     """
     # Get match
     match = db.query(Match).filter(
@@ -430,6 +432,11 @@ async def generate_interview_prep(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Match not found"
         )
+
+    # Return cached data if available and not regenerating
+    if match.interview_prep_data and not regenerate:
+        logger.info("Returning cached interview prep", match_id=match_id)
+        return match.interview_prep_data
 
     # Get resume and job
     resume = db.query(Resume).filter(Resume.id == match.resume_id).first()
@@ -466,8 +473,12 @@ async def generate_interview_prep(
             job_description=f"{job.title} at {job.company or 'Company'}\n\n{job.description}\n\n{job.requirements or ''}"
         )
 
+        # Cache the result
+        match.interview_prep_data = result
+        db.commit()
+
         logger.info(
-            "Interview prep generated",
+            "Interview prep generated and cached",
             match_id=match_id
         )
 
@@ -485,11 +496,13 @@ async def generate_interview_prep(
 async def generate_cover_letter(
     match_id: int,
     request: CoverLetterRequest,
+    regenerate: bool = False,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Generate a cover letter based on the match.
+    Returns cached data if available unless regenerate=true or tone has changed.
     """
     # Get match
     match = db.query(Match).filter(
@@ -502,6 +515,13 @@ async def generate_cover_letter(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Match not found"
         )
+
+    # Check if we have cached data with the same tone
+    if match.cover_letter_data and not regenerate:
+        cached_tone = match.cover_letter_data.get("tone", "professional")
+        if cached_tone == request.tone:
+            logger.info("Returning cached cover letter", match_id=match_id)
+            return match.cover_letter_data
 
     # Get resume and job
     resume = db.query(Resume).filter(Resume.id == match.resume_id).first()
@@ -541,8 +561,15 @@ async def generate_cover_letter(
             tone=request.tone
         )
 
+        # Add tone to result for caching
+        result["tone"] = request.tone
+
+        # Cache the result
+        match.cover_letter_data = result
+        db.commit()
+
         logger.info(
-            "Cover letter generated",
+            "Cover letter generated and cached",
             match_id=match_id,
             tone=request.tone
         )

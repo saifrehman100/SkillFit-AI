@@ -102,6 +102,10 @@ export interface MatchResponse {
     missing_sections: string[];
     recommendations: string[];
   } | null;
+  // Cached generated content
+  interview_prep_data: Record<string, any> | null;
+  cover_letter_data: Record<string, any> | null;
+  improved_resume_data: Record<string, any> | null;
 }
 
 // ============ Application ============
