@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, FileText, Briefcase, Target, Kanban, Settings, LogOut } from 'lucide-react';
+import { Home, FileText, Briefcase, Target, Kanban, BarChart3, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +12,7 @@ const navigation = [
   { name: 'Jobs', href: '/dashboard/jobs', icon: Briefcase },
   { name: 'Matches', href: '/dashboard/matches', icon: Target },
   { name: 'Applications', href: '/dashboard/applications', icon: Kanban },
+  { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 

@@ -90,6 +90,18 @@ export interface MatchResponse {
   tokens_used: number | null;
   cost_estimate: number | null;
   created_at: string;
+  // Phase 2: ATS Analysis
+  ats_score: number | null;
+  keyword_matches: {
+    matched: string[];
+    missing: string[];
+    match_percentage: number;
+  } | null;
+  ats_issues: {
+    formatting_issues: string[];
+    missing_sections: string[];
+    recommendations: string[];
+  } | null;
 }
 
 // ============ Application ============
