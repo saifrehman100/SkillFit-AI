@@ -13,20 +13,20 @@ export default function AnalyticsPage() {
   const [days, setDays] = useState(30);
 
   useEffect(() => {
+    const fetchAnalytics = async () => {
+      setLoading(true);
+      try {
+        const response = await analyticsAPI.getStats(days);
+        setStats(response.data);
+      } catch (error: any) {
+        toast.error('Failed to load analytics');
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchAnalytics();
   }, [days]);
-
-  const fetchAnalytics = async () => {
-    setLoading(true);
-    try {
-      const response = await analyticsAPI.getStats(days);
-      setStats(response.data);
-    } catch (error: any) {
-      toast.error('Failed to load analytics');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Track page view
   useEffect(() => {

@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authAPI } from '@/lib/api/auth';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function OAuthCallbackPage() {
+function OAuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'error'>('loading');
@@ -65,5 +65,20 @@ export default function OAuthCallbackPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function OAuthCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary mb-4" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    }>
+      <OAuthCallbackContent />
+    </Suspense>
   );
 }
