@@ -20,6 +20,21 @@ export interface UsageResponse {
   can_create_match: boolean;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  new_password: string;
+}
+
+export interface GoogleAuthResponse {
+  access_token: string;
+  token_type: string;
+  user: UserResponse;
+}
+
 export const authAPI = {
   register: (data: RegisterRequest) =>
     apiClient.post<RegisterResponse>('/auth/register', data),
@@ -41,4 +56,15 @@ export const authAPI = {
 
   getUsage: () =>
     apiClient.get<UsageResponse>('/auth/usage'),
+
+  // Phase 2: Forgot Password
+  forgotPassword: (data: ForgotPasswordRequest) =>
+    apiClient.post<{ message: string }>('/auth/forgot-password', data),
+
+  resetPassword: (data: ResetPasswordRequest) =>
+    apiClient.post<{ message: string }>('/auth/reset-password', data),
+
+  // Phase 2: Google OAuth
+  googleAuth: (code: string) =>
+    apiClient.post<GoogleAuthResponse>('/auth/google', { code }),
 };

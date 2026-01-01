@@ -37,4 +37,11 @@ export const resumesAPI = {
     apiClient.post<RewriteResponse>(`/resumes/${resumeId}/rewrite`, null, {
       params: { job_id: jobId, match_id: matchId }
     }),
+
+  // Phase 2: Resume Downloads
+  downloadDocx: (id: number) =>
+    apiClient.get(`/resumes/${id}/download/docx`, { responseType: 'blob' }),
+
+  downloadPdf: (id: number) =>
+    apiClient.get(`/resumes/${id}/download/pdf`, { responseType: 'blob' }),
 };
