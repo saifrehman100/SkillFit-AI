@@ -57,12 +57,12 @@ async def create_match(
     """
     # Check usage limits for free tier
     PLAN_LIMITS = {
-        "free": 3,
+        "free": 10,
         "pro": 999999,
         "enterprise": 999999
     }
 
-    limit = PLAN_LIMITS.get(current_user.plan, 3)
+    limit = PLAN_LIMITS.get(current_user.plan, 10)
     if current_user.matches_used >= limit:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -196,12 +196,12 @@ async def create_batch_matches(
     """
     # Check usage limits for free tier (batch counts as number of resumes)
     PLAN_LIMITS = {
-        "free": 3,
+        "free": 10,
         "pro": 999999,
         "enterprise": 999999
     }
 
-    limit = PLAN_LIMITS.get(current_user.plan, 3)
+    limit = PLAN_LIMITS.get(current_user.plan, 10)
     matches_to_create = len(batch_request.resume_ids)
     if current_user.matches_used + matches_to_create > limit:
         remaining = max(0, limit - current_user.matches_used)
@@ -438,6 +438,20 @@ async def generate_interview_prep(
         logger.info("Returning cached interview prep", match_id=match_id)
         return match.interview_prep_data
 
+    # Check usage limits for free tier (only when generating new content)
+    INTERVIEW_PREP_LIMITS = {
+        "free": 3,
+        "pro": 999999,
+        "enterprise": 999999
+    }
+
+    limit = INTERVIEW_PREP_LIMITS.get(current_user.plan, 3)
+    if current_user.interview_preps_used >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Free tier limit reached ({limit} interview preps). Please upgrade to Pro for unlimited access."
+        )
+
     # Get resume and job
     resume = db.query(Resume).filter(Resume.id == match.resume_id).first()
     job = db.query(Job).filter(Job.id == match.job_id).first()
@@ -475,11 +489,16 @@ async def generate_interview_prep(
 
         # Cache the result
         match.interview_prep_data = result
+
+        # Increment usage counter
+        current_user.interview_preps_used += 1
+
         db.commit()
 
         logger.info(
             "Interview prep generated and cached",
-            match_id=match_id
+            match_id=match_id,
+            usage=current_user.interview_preps_used
         )
 
         return result
@@ -522,6 +541,20 @@ async def generate_cover_letter(
         if cached_tone == request.tone:
             logger.info("Returning cached cover letter", match_id=match_id)
             return match.cover_letter_data
+
+    # Check usage limits for free tier (only when generating new content)
+    COVER_LETTER_LIMITS = {
+        "free": 3,
+        "pro": 999999,
+        "enterprise": 999999
+    }
+
+    limit = COVER_LETTER_LIMITS.get(current_user.plan, 3)
+    if current_user.cover_letters_used >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Free tier limit reached ({limit} cover letters). Please upgrade to Pro for unlimited access."
+        )
 
     # Get resume and job
     resume = db.query(Resume).filter(Resume.id == match.resume_id).first()
@@ -566,12 +599,17 @@ async def generate_cover_letter(
 
         # Cache the result
         match.cover_letter_data = result
+
+        # Increment usage counter
+        current_user.cover_letters_used += 1
+
         db.commit()
 
         logger.info(
             "Cover letter generated and cached",
             match_id=match_id,
-            tone=request.tone
+            tone=request.tone,
+            usage=current_user.cover_letters_used
         )
 
         return result

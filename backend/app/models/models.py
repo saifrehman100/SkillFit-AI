@@ -47,7 +47,10 @@ class User(Base):
 
     # Subscription & Usage Tracking
     plan = Column(String(20), default="free", nullable=False)  # free, pro, enterprise
-    matches_used = Column(Integer, default=0, nullable=False)  # Track free tier usage
+    matches_used = Column(Integer, default=0, nullable=False)  # Track match usage
+    resume_rewrites_used = Column(Integer, default=0, nullable=False)  # Track resume rewrite usage
+    cover_letters_used = Column(Integer, default=0, nullable=False)  # Track cover letter usage
+    interview_preps_used = Column(Integer, default=0, nullable=False)  # Track interview prep usage
     stripe_customer_id = Column(String(255), nullable=True)  # For future Stripe integration
     stripe_subscription_id = Column(String(255), nullable=True)
 

@@ -20,8 +20,10 @@ from app.services.resume_generator import ResumeGenerator
 from app.services.interview_generator import InterviewGenerator
 from app.services.cover_letter_generator import CoverLetterGenerator
 from fastapi.responses import StreamingResponse
+from app.core.logging_config import get_logger
 
 router = APIRouter()
+logger = get_logger(__name__)
 
 
 @router.post("/upload", response_model=ResumeResponse, status_code=status.HTTP_201_CREATED)
@@ -213,12 +215,14 @@ async def rewrite_resume(
     resume_id: int,
     job_id: int,
     match_id: Optional[int] = None,
+    regenerate: bool = False,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Generate an improved version of a resume based on match recommendations.
     Requires a job ID to tailor the resume to.
+    Returns cached data if available unless regenerate=true.
     """
     # Get resume
     resume = db.query(Resume).filter(
@@ -257,6 +261,25 @@ async def rewrite_resume(
             Match.user_id == current_user.id
         ).order_by(Match.created_at.desc()).first()
 
+    # Return cached data if available and not regenerating
+    if match and match.improved_resume_data and not regenerate:
+        logger.info("Returning cached improved resume", match_id=match.id if match else None)
+        return match.improved_resume_data
+
+    # Check usage limits for free tier (only when generating new content)
+    RESUME_REWRITE_LIMITS = {
+        "free": 3,
+        "pro": 999999,
+        "enterprise": 999999
+    }
+
+    limit = RESUME_REWRITE_LIMITS.get(current_user.plan, 3)
+    if current_user.resume_rewrites_used >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Free tier limit reached ({limit} resume rewrites). Please upgrade to Pro for unlimited access."
+        )
+
     # Get match data if available
     match_score = match.match_score if match else 50
     recommendations = match.recommendations if match else []
@@ -281,13 +304,24 @@ async def rewrite_resume(
             missing_skills=missing_skills
         )
 
-        return {
+        response_data = {
             "resume_id": resume_id,
             "job_id": job_id,
             "match_id": match.id if match else None,
             "original_score": match_score,
             **result
         }
+
+        # Cache the result if we have a match
+        if match:
+            match.improved_resume_data = response_data
+
+        # Increment usage counter
+        current_user.resume_rewrites_used += 1
+
+        db.commit()
+
+        return response_data
 
     except Exception as e:
         raise HTTPException(
