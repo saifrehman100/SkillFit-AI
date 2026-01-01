@@ -320,20 +320,31 @@ async def reset_password(
         )
 
 
-@router.post("/google", response_model=Token)
+class GoogleAuthRequest(BaseModel):
+    code: str
+
+
+class GoogleAuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+
+
+@router.post("/google", response_model=GoogleAuthResponse)
 async def google_auth(
-    code: str,
+    request: GoogleAuthRequest,
     db: Session = Depends(get_db)
 ):
     """
     Authenticate or register user with Google OAuth.
 
     Args:
-        code: Authorization code from Google OAuth callback
+        request: Contains authorization code from Google OAuth callback
 
     Returns:
         JWT access token
     """
+    code = request.code
     # Check if Google OAuth is configured
     if not settings.google_client_id or not settings.google_client_secret:
         raise HTTPException(
@@ -392,7 +403,11 @@ async def google_auth(
             expires_delta=timedelta(minutes=settings.access_token_expire_minutes)
         )
 
-        return Token(access_token=access_token, token_type="bearer")
+        return GoogleAuthResponse(
+            access_token=access_token,
+            token_type="bearer",
+            user=UserResponse.from_orm(user)
+        )
 
     except HTTPException:
         raise
