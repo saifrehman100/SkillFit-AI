@@ -4,9 +4,13 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install only runtime dependencies
+# Install runtime dependencies (including reportlab requirements)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
+    libfreetype6 \
+    libjpeg62-turbo \
+    zlib1g \
+    libpng16-16 \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
