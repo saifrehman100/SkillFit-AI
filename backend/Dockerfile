@@ -1,10 +1,32 @@
-# Lightweight production Dockerfile for Railway
+# Optimized multi-stage Dockerfile for Railway (< 4GB limit)
+FROM python:3.11-slim as builder
+
+# Set working directory
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    libpq-dev \
+    libfreetype6-dev \
+    libjpeg-dev \
+    zlib1g-dev \
+    libpng-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and install Python dependencies
+COPY requirements.railway.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir --user -r requirements.railway.txt
+
+# Final stage
 FROM python:3.11-slim
 
 # Set working directory
 WORKDIR /app
 
-# Install runtime dependencies (including reportlab requirements)
+# Install only runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     libfreetype6 \
@@ -14,18 +36,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Copy requirements first for caching
-COPY requirements.production.txt requirements.txt ./
+# Copy Python packages from builder
+COPY --from=builder /root/.local /root/.local
 
-# Install Python dependencies with optimizations (use production requirements)
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.production.txt && \
-    # Remove pip cache and unused files
-    rm -rf /root/.cache/pip && \
-    find /usr/local/lib/python3.11/site-packages -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true && \
-    find /usr/local/lib/python3.11/site-packages -type d -name "test" -exec rm -rf {} + 2>/dev/null || true && \
-    find /usr/local/lib/python3.11/site-packages -name "*.pyc" -delete && \
-    find /usr/local/lib/python3.11/site-packages -name "*.pyo" -delete
+# Make sure scripts in .local are usable
+ENV PATH=/root/.local/bin:$PATH
 
 # Copy application code
 COPY . .

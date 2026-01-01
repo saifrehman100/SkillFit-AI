@@ -1,0 +1,55 @@
+# Lightweight requirements for Railway deployment
+# Optimized to stay under 4GB Docker image limit
+
+# FastAPI and server
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Database
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+alembic==1.13.1
+
+# LLM SDKs (core - no LangChain)
+anthropic==0.18.1
+openai==1.12.0
+google-generativeai==0.3.2
+
+# Document parsing and generation (lightweight)
+PyMuPDF==1.23.21
+python-docx==1.1.0
+pypdf==4.0.1
+python-magic==0.4.27
+reportlab==4.1.0
+Pillow==10.2.0
+
+# Authentication and security
+python-jose[cryptography]==3.3.0
+bcrypt==3.2.2
+passlib==1.7.4
+python-dotenv==1.0.1
+email-validator==2.1.0
+
+# Utilities (essential only)
+httpx==0.26.0
+aiofiles==23.2.1
+tenacity==8.2.3
+beautifulsoup4==4.12.3
+numpy==1.26.3
+
+# Cloud Storage
+google-cloud-storage==2.14.0
+
+# Monitoring and logging
+structlog==24.1.0
+prometheus-client==0.19.0
+
+# REMOVED to reduce image size:
+# - sentence-transformers (1-2GB with PyTorch)
+# - unstructured (very large)
+# - langchain packages (not used)
+# - pgvector (not used)
+# - celery, redis, flower (not used)

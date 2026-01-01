@@ -6,10 +6,16 @@ from typing import List, Optional
 import numpy as np
 
 from openai import OpenAI
-from sentence_transformers import SentenceTransformer
 
 from app.core.config import settings
 from app.core.logging_config import get_logger
+
+# Conditional import for sentence-transformers (optional dependency)
+try:
+    from sentence_transformers import SentenceTransformer
+    SENTENCE_TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    SENTENCE_TRANSFORMERS_AVAILABLE = False
 
 logger = get_logger(__name__)
 
@@ -98,6 +104,11 @@ class SentenceTransformerEmbeddings(EmbeddingsProvider):
 
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
         super().__init__()
+        if not SENTENCE_TRANSFORMERS_AVAILABLE:
+            raise ImportError(
+                "sentence-transformers is not installed. "
+                "Install it with: pip install sentence-transformers"
+            )
         logger.info("Loading SentenceTransformer model", model=model_name)
         self.model = SentenceTransformer(model_name)
         self.dimensions = self.model.get_sentence_embedding_dimension()
