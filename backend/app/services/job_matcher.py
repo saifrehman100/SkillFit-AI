@@ -155,11 +155,26 @@ Respond with ONLY a JSON object:
                 # Add ATS data to match results
                 match_data["ats_score"] = ats_result["ats_score"]
                 match_data["keyword_matches"] = ats_result["keyword_analysis"]
+
+                # Transform issues into formatting_issues and missing_sections
+                formatting_issues = []
+                missing_sections = []
+                for issue in ats_result.get("issues", []):
+                    if isinstance(issue, dict):
+                        issue_text = issue.get("issue", str(issue))
+                        if issue.get("type") == "section":
+                            missing_sections.append(issue_text)
+                        else:
+                            formatting_issues.append(issue_text)
+                    else:
+                        formatting_issues.append(str(issue))
+
                 match_data["ats_issues"] = {
                     "formatting_score": ats_result["formatting_score"],
                     "section_score": ats_result["section_score"],
                     "contact_score": ats_result["contact_score"],
-                    "issues": ats_result["issues"],
+                    "formatting_issues": formatting_issues,
+                    "missing_sections": missing_sections,
                     "recommendations": ats_result["recommendations"]
                 }
 
