@@ -26,6 +26,9 @@ python-magic==0.4.27
 reportlab==4.1.0
 Pillow==10.2.0
 
+# Database extensions (pgvector is small, ~100KB)
+pgvector==0.2.4
+
 # Authentication and security
 python-jose[cryptography]==3.3.0
 bcrypt==3.2.2
