@@ -34,6 +34,7 @@ class User(Base):
     hashed_password = Column(String(255), nullable=True)  # Nullable for OAuth users
     api_key = Column(String(64), unique=True, index=True, nullable=True)
     is_active = Column(Boolean, default=True)
+    is_admin = Column(Boolean, default=False, nullable=False)  # Admin role for platform management
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, get_admin_user
 from app.models.database import get_db
 from app.models.models import User, Analytics
 from pydantic import BaseModel
@@ -143,14 +143,13 @@ async def get_analytics_stats(
 @router.get("/admin/stats")
 async def get_admin_analytics(
     days: int = 30,
-    current_user: User = Depends(get_current_user),
+    admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db)
 ):
     """
     Get platform-wide analytics statistics.
 
-    Note: In production, add admin role check.
-    For now, all authenticated users can view platform stats.
+    **Admin Only** - Requires is_admin=true in user record.
     """
     start_date = datetime.utcnow() - timedelta(days=days)
 
