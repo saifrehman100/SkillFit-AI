@@ -25,7 +25,8 @@ python-docx==1.1.0
 pypdf==4.0.1
 unstructured==0.12.3
 python-magic==0.4.27
-reportlab==4.0.9
+# Required for PDF generation in interview and cover letter features
+reportlab==4.1.0
 Pillow==10.2.0
 
 # Embeddings and vector search
