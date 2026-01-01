@@ -226,10 +226,11 @@ async def forgot_password(
     # Create password reset token (expires in 1 hour)
     reset_token_data = {
         "sub": user.email,
-        "type": "password_reset"
+        "type": "password_reset",
+        "exp": datetime.utcnow() + timedelta(hours=1)
     }
     reset_token = jwt.encode(
-        {**reset_token_data, "exp": timedelta(hours=1)},
+        reset_token_data,
         settings.secret_key,
         algorithm=settings.algorithm
     )
