@@ -16,8 +16,8 @@ from app.core.llm_providers import LLMFactory
 from app.models.database import get_db
 from app.models.models import User, Resume, Job, Match, APIUsage
 from app.services.job_matcher import JobMatcher
-from app.services.interview_prep import InterviewPrepGenerator
-from app.services.cover_letter import CoverLetterGenerator
+from app.services.interview_generator import InterviewGenerator
+from app.services.cover_letter_generator import CoverLetterGenerator
 from app.services.docx_generator import DocxGenerator
 from app.services.pdf_generator import PdfGenerator
 from app.core.logging_config import get_logger
@@ -481,10 +481,12 @@ async def generate_interview_prep(
         )
 
         # Generate interview prep
-        generator = InterviewPrepGenerator(llm_client)
-        result = await generator.generate(
+        generator = InterviewGenerator(llm_client)
+        result = await generator.generate_questions(
             resume_text=resume.raw_text,
-            job_description=f"{job.title} at {job.company or 'Company'}\n\n{job.description}\n\n{job.requirements or ''}"
+            job_description=f"{job.description}\n\n{job.requirements or ''}",
+            job_title=job.title,
+            company=job.company or "the company"
         )
 
         # Cache the result
@@ -672,10 +674,12 @@ async def download_interview_prep_docx(
         )
 
         # Generate interview prep
-        generator = InterviewPrepGenerator(llm_client)
-        result = await generator.generate(
+        generator = InterviewGenerator(llm_client)
+        result = await generator.generate_questions(
             resume_text=resume.raw_text,
-            job_description=f"{job.title} at {job.company or 'Company'}\n\n{job.description}\n\n{job.requirements or ''}"
+            job_description=f"{job.description}\n\n{job.requirements or ''}",
+            job_title=job.title,
+            company=job.company or "the company"
         )
 
         # Generate DOCX
@@ -746,10 +750,12 @@ async def download_interview_prep_pdf(
         )
 
         # Generate interview prep
-        generator = InterviewPrepGenerator(llm_client)
-        result = await generator.generate(
+        generator = InterviewGenerator(llm_client)
+        result = await generator.generate_questions(
             resume_text=resume.raw_text,
-            job_description=f"{job.title} at {job.company or 'Company'}\n\n{job.description}\n\n{job.requirements or ''}"
+            job_description=f"{job.description}\n\n{job.requirements or ''}",
+            job_title=job.title,
+            company=job.company or "the company"
         )
 
         # Generate PDF
