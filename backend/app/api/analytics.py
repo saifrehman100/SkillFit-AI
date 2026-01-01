@@ -6,7 +6,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
+from sqlalchemy import func, and_, cast, String
 
 from app.core.auth import get_current_user, get_admin_user
 from app.models.database import get_db
@@ -112,7 +112,7 @@ async def get_analytics_stats(
 
     # Top pages (for page_view events)
     top_pages_query = db.query(
-        Analytics.event_data['page'].astext.label('page'),
+        cast(Analytics.event_data['page'], String).label('page'),
         func.count(Analytics.id).label('views')
     ).filter(
         and_(
@@ -121,7 +121,7 @@ async def get_analytics_stats(
             Analytics.created_at >= start_date
         )
     ).group_by(
-        Analytics.event_data['page'].astext
+        cast(Analytics.event_data['page'], String)
     ).order_by(
         func.count(Analytics.id).desc()
     ).limit(10).all()
