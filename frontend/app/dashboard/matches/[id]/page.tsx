@@ -287,7 +287,7 @@ export default function MatchDetailPage() {
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            {match.keyword_matches.matched.length > 0 && (
+            {match.keyword_matches.matched && match.keyword_matches.matched.length > 0 && (
               <div>
                 <h4 className="font-medium mb-2 text-sm">Matched Keywords:</h4>
                 <div className="flex flex-wrap gap-2">
@@ -300,7 +300,7 @@ export default function MatchDetailPage() {
               </div>
             )}
 
-            {match.keyword_matches.missing.length > 0 && (
+            {match.keyword_matches.missing && match.keyword_matches.missing.length > 0 && (
               <div>
                 <h4 className="font-medium mb-2 text-sm">Missing Keywords:</h4>
                 <div className="flex flex-wrap gap-2">
@@ -326,7 +326,7 @@ export default function MatchDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {match.ats_issues.formatting_issues && match.ats_issues.formatting_issues.length > 0 && (
+            {match.ats_issues.formatting_issues && Array.isArray(match.ats_issues.formatting_issues) && match.ats_issues.formatting_issues.length > 0 && (
               <div>
                 <h4 className="font-medium mb-2 text-sm">Formatting Issues:</h4>
                 <ul className="space-y-1 text-sm">
@@ -340,7 +340,7 @@ export default function MatchDetailPage() {
               </div>
             )}
 
-            {match.ats_issues.missing_sections && match.ats_issues.missing_sections.length > 0 && (
+            {match.ats_issues.missing_sections && Array.isArray(match.ats_issues.missing_sections) && match.ats_issues.missing_sections.length > 0 && (
               <div>
                 <h4 className="font-medium mb-2 text-sm">Missing Sections:</h4>
                 <ul className="space-y-1 text-sm">
@@ -504,41 +504,47 @@ export default function MatchDetailPage() {
         </CardHeader>
         {interviewPrep && (
           <CardContent className="space-y-6">
-            <div>
-              <h4 className="font-semibold mb-3">Technical Questions:</h4>
-              <div className="space-y-3">
-                {interviewPrep.technical_questions.map((q, idx) => (
-                  <div key={idx} className="border rounded-lg p-3">
-                    <p className="font-medium text-sm mb-2">{q.question}</p>
-                    <p className="text-sm text-muted-foreground">{q.suggested_answer}</p>
-                  </div>
-                ))}
+            {interviewPrep.technical_questions && Array.isArray(interviewPrep.technical_questions) && interviewPrep.technical_questions.length > 0 && (
+              <div>
+                <h4 className="font-semibold mb-3">Technical Questions:</h4>
+                <div className="space-y-3">
+                  {interviewPrep.technical_questions.map((q, idx) => (
+                    <div key={idx} className="border rounded-lg p-3">
+                      <p className="font-medium text-sm mb-2">{q.question}</p>
+                      <p className="text-sm text-muted-foreground">{q.suggested_answer}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div>
-              <h4 className="font-semibold mb-3">Behavioral Questions:</h4>
-              <div className="space-y-3">
-                {interviewPrep.behavioral_questions.map((q, idx) => (
-                  <div key={idx} className="border rounded-lg p-3">
-                    <p className="font-medium text-sm mb-2">{q.question}</p>
-                    <p className="text-sm text-muted-foreground">{q.star_example}</p>
-                  </div>
-                ))}
+            {interviewPrep.behavioral_questions && Array.isArray(interviewPrep.behavioral_questions) && interviewPrep.behavioral_questions.length > 0 && (
+              <div>
+                <h4 className="font-semibold mb-3">Behavioral Questions:</h4>
+                <div className="space-y-3">
+                  {interviewPrep.behavioral_questions.map((q, idx) => (
+                    <div key={idx} className="border rounded-lg p-3">
+                      <p className="font-medium text-sm mb-2">{q.question}</p>
+                      <p className="text-sm text-muted-foreground">{q.star_example}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            <div>
-              <h4 className="font-semibold mb-3">Key Talking Points:</h4>
-              <ul className="space-y-1 text-sm">
-                {interviewPrep.talking_points.map((point, idx) => (
-                  <li key={idx} className="flex gap-2">
-                    <span className="text-blue-500">•</span>
-                    <span>{point}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            {interviewPrep.talking_points && Array.isArray(interviewPrep.talking_points) && interviewPrep.talking_points.length > 0 && (
+              <div>
+                <h4 className="font-semibold mb-3">Key Talking Points:</h4>
+                <ul className="space-y-1 text-sm">
+                  {interviewPrep.talking_points.map((point, idx) => (
+                    <li key={idx} className="flex gap-2">
+                      <span className="text-blue-500">•</span>
+                      <span>{point}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </CardContent>
         )}
       </Card>
@@ -625,7 +631,7 @@ export default function MatchDetailPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {rewriteResult.key_improvements && rewriteResult.key_improvements.length > 0 && (
+            {rewriteResult.key_improvements && Array.isArray(rewriteResult.key_improvements) && rewriteResult.key_improvements.length > 0 && (
               <div>
                 <h3 className="font-semibold mb-3">Key Improvements:</h3>
                 <ul className="space-y-2">
@@ -646,7 +652,7 @@ export default function MatchDetailPage() {
               </div>
             </div>
 
-            {rewriteResult.changes_summary && rewriteResult.changes_summary.length > 0 && (
+            {rewriteResult.changes_summary && Array.isArray(rewriteResult.changes_summary) && rewriteResult.changes_summary.length > 0 && (
               <div>
                 <h3 className="font-semibold mb-3">Changes Made:</h3>
                 <ul className="space-y-1">
