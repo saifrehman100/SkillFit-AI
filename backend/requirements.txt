@@ -26,6 +26,7 @@ pypdf==4.0.1
 unstructured==0.12.3
 python-magic==0.4.27
 reportlab==4.0.9
+Pillow==10.2.0
 
 # Embeddings and vector search
 sentence-transformers==2.3.1
