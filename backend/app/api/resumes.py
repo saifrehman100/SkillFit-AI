@@ -1264,6 +1264,39 @@ async def rescan_improved_resume(
         analyzer = ResumeAnalyzer(llm_client)
         analysis = await analyzer.analyze(improved_text)
 
+        # Recalculate match scores with the improved resume
+        job = db.query(Job).filter(Job.id == match.job_id).first()
+        if job:
+            from app.services.matcher import JobMatcher
+            matcher = JobMatcher(llm_client)
+            job_text = f"{job.description}\n\n{job.requirements or ''}"
+
+            match_result = await matcher.match(
+                resume_text=improved_text,
+                job_description=job_text,
+                detailed=True
+            )
+
+            # Update match scores with improved resume results
+            match.match_score = match_result.get("match_score", match.match_score)
+            match.ats_score = match_result.get("ats_score", match.ats_score)
+            match.missing_skills = match_result.get("missing_skills", match.missing_skills)
+            match.recommendations = match_result.get("recommendations", match.recommendations)
+            match.explanation = match_result.get("explanation", match.explanation)
+            match.keyword_matches = match_result.get("keyword_matches", match.keyword_matches)
+            match.ats_issues = match_result.get("ats_issues", match.ats_issues)
+
+            logger.info(
+                "Match scores updated after rescan",
+                match_id=match_id,
+                new_match_score=match.match_score,
+                new_ats_score=match.ats_score
+            )
+
+            # Commit the updated match scores
+            db.commit()
+            db.refresh(match)
+
         # If user wants to save it, create a new resume
         saved_resume = None
         if save_to_collection:

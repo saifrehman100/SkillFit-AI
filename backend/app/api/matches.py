@@ -166,6 +166,21 @@ async def create_match(
         db.commit()
         db.refresh(match)
 
+        # Track analytics event
+        from app.models.models import Analytics
+        analytics_event = Analytics(
+            user_id=current_user.id,
+            event_type="match_created",
+            event_data={
+                "match_id": match.id,
+                "resume_id": resume.id,
+                "job_id": job.id,
+                "match_score": match.match_score
+            }
+        )
+        db.add(analytics_event)
+        db.commit()
+
         logger.info(
             "Match created",
             resume_id=resume.id,
