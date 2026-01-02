@@ -1281,7 +1281,7 @@ async def rescan_improved_resume(
         # Recalculate match scores with the improved resume
         job = db.query(Job).filter(Job.id == match.job_id).first()
         if job:
-            from app.services.matcher import JobMatcher
+            from app.services.job_matcher import JobMatcher
             matcher = JobMatcher(llm_client)
             job_text = f"{job.description}\n\n{job.requirements or ''}"
 
