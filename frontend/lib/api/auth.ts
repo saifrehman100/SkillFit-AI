@@ -35,6 +35,17 @@ export interface GoogleAuthResponse {
   user: UserResponse;
 }
 
+export interface ProInterestRequest {
+  email: string;
+  feature_interested_in?: string;
+}
+
+export interface ContactSalesRequest {
+  email: string;
+  plan: string;
+  message: string;
+}
+
 export const authAPI = {
   register: (data: RegisterRequest) =>
     apiClient.post<RegisterResponse>('/auth/register', data),
@@ -67,4 +78,16 @@ export const authAPI = {
   // Phase 2: Google OAuth
   googleAuth: (code: string) =>
     apiClient.post<GoogleAuthResponse>('/auth/google', { code }),
+
+  // Pro Plan Interest
+  expressProInterest: (data: ProInterestRequest) =>
+    apiClient.post<{ message: string; status: string }>('/auth/pro-interest', data),
+
+  // Contact Sales for Enterprise
+  contactSales: (data: ContactSalesRequest) =>
+    apiClient.post<{ message: string }>('/auth/contact-sales', data),
+
+  // Get Pricing Info
+  getPricing: () =>
+    apiClient.get('/auth/pricing'),
 };

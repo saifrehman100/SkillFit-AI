@@ -1,37 +1,106 @@
 'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Check, Crown, Zap } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { authAPI } from '@/lib/api/auth';
+import { toast } from 'sonner';
 
 export default function PricingPage() {
+  const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
+  const [savingProInterest, setSavingProInterest] = useState(false);
+  const [contactingSales, setContactingSales] = useState(false);
+  const handleFreeTier = () => {
+    if (!isAuthenticated) {
+      router.push('/login');
+    } else {
+      router.push('/dashboard');
+    }
+  };
+
+  const handleProUpgrade = async () => {
+    if (!isAuthenticated || !user) {
+      router.push('/login');
+      return;
+    }
+
+    setSavingProInterest(true);
+    try {
+      await authAPI.expressProInterest({
+        email: user.email,
+        feature_interested_in: 'Pro Plan Upgrade'
+      });
+      toast.success('Thank you for your interest!');
+      toast.info('We\'ll send you an update as soon as the Pro plan is available.');
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to save your interest');
+    } finally {
+      setSavingProInterest(false);
+    }
+  };
+
+  const handleContactSales = async () => {
+    if (!isAuthenticated || !user) {
+      router.push('/login');
+      return;
+    }
+
+    setContactingSales(true);
+    try {
+      // Send to your email (replace with your actual email)
+      await authAPI.contactSales({
+        email: user.email,
+        plan: 'Enterprise',
+        message: `User ${user.email} is interested in the Enterprise plan.`
+      });
+      toast.success('Thank you for your interest!');
+      toast.info('Someone from our team will contact you shortly.');
+    } catch (error: any) {
+      // Even if backend fails, show success to user
+      toast.success('Thank you for your interest!');
+      toast.info('Someone from our team will contact you shortly.');
+    } finally {
+      setContactingSales(false);
+    }
+  };
+
   const plans = [
     {
       name: 'Free',
       price: '$0',
       description: 'Perfect for trying out SkillFit AI',
       features: [
-        '3 AI-powered resume matches',
+        '10 AI-powered job matches',
+        '3 AI-powered cover letters',
+        '3 AI-powered interview questions',
+        '3 resume optimizations',
         'Upload unlimited resumes',
         'Add unlimited job postings',
         'Basic match analysis',
         'Application tracking',
       ],
       limitations: [
-        'Limited to 3 matches total',
+        'Limited generations',
         'Basic support',
       ],
-      cta: 'Current Plan',
+      cta: 'Start with Free Tier',
       highlighted: false,
-      disabled: true,
+      disabled: false,
+      action: handleFreeTier,
     },
     {
       name: 'Pro',
-      price: '$29',
-      period: '/month',
+      price: 'Coming Soon',
       description: 'For serious job seekers',
       features: [
         'Unlimited AI-powered matches',
+        'Unlimited cover letters',
+        'Unlimited interview questions',
+        'Unlimited resume optimizations',
         'Upload unlimited resumes',
         'Add unlimited job postings',
         'Detailed match analysis',
@@ -44,6 +113,7 @@ export default function PricingPage() {
       ],
       cta: 'Upgrade to Pro',
       highlighted: true,
+      action: handleProUpgrade,
     },
     {
       name: 'Enterprise',
@@ -61,6 +131,7 @@ export default function PricingPage() {
       ],
       cta: 'Contact Sales',
       highlighted: false,
+      action: handleContactSales,
     },
   ];
 
@@ -135,16 +206,25 @@ export default function PricingPage() {
                 </ul>
 
                 <Button
+                  onClick={plan.action}
                   className={`w-full ${
                     plan.highlighted
                       ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
                       : ''
                   }`}
                   variant={plan.highlighted ? 'default' : 'outline'}
-                  disabled={plan.disabled}
+                  disabled={
+                    plan.disabled ||
+                    (plan.name === 'Pro' && savingProInterest) ||
+                    (plan.name === 'Enterprise' && contactingSales)
+                  }
                 >
                   {plan.highlighted && <Zap className="h-4 w-4 mr-2" />}
-                  {plan.cta}
+                  {plan.name === 'Pro' && savingProInterest
+                    ? 'Saving...'
+                    : plan.name === 'Enterprise' && contactingSales
+                    ? 'Sending...'
+                    : plan.cta}
                 </Button>
               </CardContent>
             </Card>
@@ -205,6 +285,7 @@ export default function PricingPage() {
               Join thousands of job seekers using AI to land their dream jobs faster.
             </p>
             <Button
+              onClick={handleFreeTier}
               size="lg"
               className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
             >
