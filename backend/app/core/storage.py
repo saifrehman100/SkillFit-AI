@@ -105,8 +105,26 @@ class StorageClient:
             from google.cloud import storage
             from google.oauth2 import service_account
 
-            # Parse credentials
-            credentials_dict = json.loads(settings.gcs_credentials_json)
+            # Parse credentials - handle both raw JSON and escaped JSON
+            creds_json = settings.gcs_credentials_json
+
+            # If credentials are wrapped in quotes, remove them
+            if creds_json.startswith('"') and creds_json.endswith('"'):
+                creds_json = creds_json[1:-1]
+
+            # Replace escaped newlines with actual newlines
+            creds_json = creds_json.replace('\\n', '\n')
+
+            try:
+                credentials_dict = json.loads(creds_json)
+            except json.JSONDecodeError as e:
+                logger.error(
+                    "Failed to parse GCS credentials JSON",
+                    error=str(e),
+                    credentials_preview=creds_json[:100] if creds_json else "empty"
+                )
+                raise
+
             credentials = service_account.Credentials.from_service_account_info(
                 credentials_dict
             )
@@ -152,7 +170,13 @@ class StorageClient:
             from google.cloud import storage
             from google.oauth2 import service_account
 
-            credentials_dict = json.loads(settings.gcs_credentials_json)
+            # Parse credentials
+            creds_json = settings.gcs_credentials_json
+            if creds_json.startswith('"') and creds_json.endswith('"'):
+                creds_json = creds_json[1:-1]
+            creds_json = creds_json.replace('\\n', '\n')
+
+            credentials_dict = json.loads(creds_json)
             credentials = service_account.Credentials.from_service_account_info(
                 credentials_dict
             )
@@ -178,7 +202,13 @@ class StorageClient:
             from google.cloud import storage
             from google.oauth2 import service_account
 
-            credentials_dict = json.loads(settings.gcs_credentials_json)
+            # Parse credentials
+            creds_json = settings.gcs_credentials_json
+            if creds_json.startswith('"') and creds_json.endswith('"'):
+                creds_json = creds_json[1:-1]
+            creds_json = creds_json.replace('\\n', '\n')
+
+            credentials_dict = json.loads(creds_json)
             credentials = service_account.Credentials.from_service_account_info(
                 credentials_dict
             )

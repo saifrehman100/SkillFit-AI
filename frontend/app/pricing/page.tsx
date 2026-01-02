@@ -73,7 +73,7 @@ export default function PricingPage() {
       name: 'Free',
       price: '$0',
       period: undefined,
-      description: 'Perfect for trying out SkillFit AI',
+      description: 'Perfect for trying out CareerAlign.ai',
       features: [
         '10 AI-powered job matches',
         '3 AI-powered cover letters',
@@ -143,7 +143,7 @@ export default function PricingPage() {
       {/* Header */}
       <div className="border-b">
         <div className="container mx-auto px-4 py-4">
-          <h1 className="text-2xl font-heading font-bold">SkillFit AI</h1>
+          <h1 className="text-2xl font-heading font-bold">CareerAlign.ai</h1>
         </div>
       </div>
 

@@ -24,7 +24,7 @@ export function Sidebar() {
     <div className="flex flex-col h-full w-64 border-r border-border bg-card">
       {/* Logo */}
       <div className="p-6 border-b border-border">
-        <h1 className="text-2xl font-heading font-bold">SkillFit AI</h1>
+        <h1 className="text-2xl font-heading font-bold">CareerAlign.ai</h1>
         <p className="text-sm text-muted-foreground mt-1">{user?.email}</p>
       </div>
 

@@ -18,7 +18,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "SkillFit AI - AI-Powered Resume Matching",
+  title: "CareerAlign.ai - AI-Powered Resume Matching",
   description: "Match your resume to jobs with AI-powered analysis",
 };
 

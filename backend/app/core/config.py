@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     )
 
     # Application
-    app_name: str = Field(default="SkillFit AI - Resume Matcher")
+    app_name: str = Field(default="CareerAlign.ai - Resume Matcher")
     app_version: str = Field(default="1.0.0")
     environment: Literal["development", "staging", "production"] = Field(default="development")
     debug: bool = Field(default=False)

@@ -22,8 +22,8 @@ class EmailService:
         sender_name: str = None
     ):
         self.brevo_api_key = brevo_api_key or os.getenv("BREVO_API_KEY", "")
-        self.sender_email = sender_email or os.getenv("SENDER_EMAIL", "noreply@skillfit-ai.com")
-        self.sender_name = sender_name or os.getenv("SENDER_NAME", "SkillFit AI")
+        self.sender_email = sender_email or os.getenv("SENDER_EMAIL", "noreply@careeralign.ai")
+        self.sender_name = sender_name or os.getenv("SENDER_NAME", "CareerAlign.ai")
 
     def send_password_reset_email(
         self,
@@ -45,7 +45,7 @@ class EmailService:
         try:
             reset_link = f"{frontend_url}/reset-password?token={reset_token}"
 
-            subject = "SkillFit AI - Password Reset Request"
+            subject = "CareerAlign.ai - Password Reset Request"
 
             html_content = f"""
             <html>
@@ -55,7 +55,7 @@ class EmailService:
 
                   <p>Hello,</p>
 
-                  <p>We received a request to reset your password for your SkillFit AI account.</p>
+                  <p>We received a request to reset your password for your CareerAlign.ai account.</p>
 
                   <p>Click the button below to reset your password:</p>
 
@@ -80,7 +80,7 @@ class EmailService:
                   <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
 
                   <p style="font-size: 12px; color: #666;">
-                    SkillFit AI - AI-Powered Resume & Job Matcher<br>
+                    CareerAlign.ai - AI-Powered Resume & Job Matcher<br>
                     <a href="{frontend_url}" style="color: #1f4e78;">Visit our website</a>
                   </p>
                 </div>
