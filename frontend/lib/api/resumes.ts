@@ -40,8 +40,25 @@ export const resumesAPI = {
 
   // Phase 2: Resume Downloads
   downloadDocx: (id: number) =>
-    apiClient.get(`/resumes/${id}/download/docx`, { responseType: 'blob' }),
+    apiClient.get(`/resumes/${id}/download-docx`, { responseType: 'blob' }),
 
   downloadPdf: (id: number) =>
-    apiClient.get(`/resumes/${id}/download/pdf`, { responseType: 'blob' }),
+    apiClient.get(`/resumes/${id}/download-pdf`, { responseType: 'blob' }),
+
+  // Phase 2: Improved Resume Management
+  downloadImprovedResume: (matchId: number, format: 'pdf' | 'docx') =>
+    apiClient.get(`/resumes/improved/${matchId}/download`, {
+      params: { format },
+      responseType: 'blob'
+    }),
+
+  saveImprovedResume: (matchId: number) =>
+    apiClient.post<{ message: string; resume: ResumeResponse; can_use_for_matching: boolean }>(
+      `/resumes/improved/${matchId}/save`
+    ),
+
+  rescanImprovedResume: (matchId: number, saveToCollection: boolean = false) =>
+    apiClient.post(`/resumes/improved/${matchId}/rescan`, null, {
+      params: { save_to_collection: saveToCollection }
+    }),
 };

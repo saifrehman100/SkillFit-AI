@@ -39,18 +39,30 @@ export const matchesAPI = {
     apiClient.post<InterviewPrepResponse>(`/matches/${id}/interview-prep`),
 
   downloadInterviewDocx: (id: number) =>
-    apiClient.get(`/matches/${id}/interview-prep/docx`, { responseType: 'blob' }),
+    apiClient.get(`/matches/${id}/interview-prep/download`, {
+      params: { format: 'docx' },
+      responseType: 'blob'
+    }),
 
   downloadInterviewPdf: (id: number) =>
-    apiClient.get(`/matches/${id}/interview-prep/pdf`, { responseType: 'blob' }),
+    apiClient.get(`/matches/${id}/interview-prep/download`, {
+      params: { format: 'pdf' },
+      responseType: 'blob'
+    }),
 
   // Phase 2: Cover Letter
   generateCoverLetter: (id: number, data: CoverLetterRequest = {}) =>
     apiClient.post<CoverLetterResponse>(`/matches/${id}/cover-letter`, data),
 
   downloadCoverLetterDocx: (id: number, tone: string = 'professional') =>
-    apiClient.get(`/matches/${id}/cover-letter/docx`, {
-      params: { tone },
+    apiClient.get(`/matches/${id}/cover-letter/download`, {
+      params: { format: 'docx' },
+      responseType: 'blob'
+    }),
+
+  downloadCoverLetterPdf: (id: number, tone: string = 'professional') =>
+    apiClient.get(`/matches/${id}/cover-letter/download`, {
+      params: { format: 'pdf' },
       responseType: 'blob'
     }),
 };

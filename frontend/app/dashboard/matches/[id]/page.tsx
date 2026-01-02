@@ -25,6 +25,8 @@ export default function MatchDetailPage() {
   const [rewriting, setRewriting] = useState(false);
   const [rewriteResult, setRewriteResult] = useState<RewriteResponse | null>(null);
   const [copied, setCopied] = useState(false);
+  const [downloadingImprovedResume, setDownloadingImprovedResume] = useState(false);
+  const [savingImprovedResume, setSavingImprovedResume] = useState(false);
 
   // Interview Prep
   const [interviewPrep, setInterviewPrep] = useState<InterviewPrepResponse | null>(null);
@@ -164,6 +166,29 @@ export default function MatchDetailPage() {
     }
   };
 
+  const downloadCoverLetterPdf = async () => {
+    setDownloadingCoverLetter(true);
+    try {
+      const response = await matchesAPI.downloadCoverLetterPdf(id, coverLetterTone);
+      const blob = new Blob([response.data], {
+        type: 'application/pdf'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cover-letter-${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success('Downloaded cover letter as PDF');
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to download');
+    } finally {
+      setDownloadingCoverLetter(false);
+    }
+  };
+
   // Resume download handlers
   const downloadResume = async (format: 'docx' | 'pdf') => {
     if (!match) return;
@@ -188,6 +213,45 @@ export default function MatchDetailPage() {
       toast.success(`Downloaded resume as ${format.toUpperCase()}`);
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Failed to download');
+    }
+  };
+
+  // Improved resume handlers
+  const downloadImprovedResume = async (format: 'docx' | 'pdf') => {
+    setDownloadingImprovedResume(true);
+    try {
+      const response = await resumesAPI.downloadImprovedResume(id, format);
+      const blob = new Blob([response.data], {
+        type: format === 'docx'
+          ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          : 'application/pdf'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `improved-resume-${id}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success(`Downloaded improved resume as ${format.toUpperCase()}`);
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to download');
+    } finally {
+      setDownloadingImprovedResume(false);
+    }
+  };
+
+  const saveImprovedResume = async () => {
+    setSavingImprovedResume(true);
+    try {
+      const response = await resumesAPI.saveImprovedResume(id);
+      toast.success(response.data.message);
+      toast.info('You can now use this improved resume for future job matches!');
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to save resume');
+    } finally {
+      setSavingImprovedResume(false);
     }
   };
 
@@ -610,15 +674,26 @@ export default function MatchDetailPage() {
                   {generatingCoverLetter ? 'Generating...' : 'Generate Letter'}
                 </Button>
               ) : (
-                <Button
-                  onClick={downloadCoverLetter}
-                  disabled={downloadingCoverLetter}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download DOCX
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={downloadCoverLetter}
+                    disabled={downloadingCoverLetter}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    DOCX
+                  </Button>
+                  <Button
+                    onClick={() => downloadCoverLetterPdf()}
+                    disabled={downloadingCoverLetter}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <FileDown className="h-4 w-4 mr-2" />
+                    PDF
+                  </Button>
+                </div>
               )}
             </div>
           </div>
@@ -649,10 +724,39 @@ export default function MatchDetailPage() {
                   </span>
                 </p>
               </div>
-              <Button onClick={handleCopy} variant="outline">
-                {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
-                {copied ? 'Copied!' : 'Copy'}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => downloadImprovedResume('docx')}
+                  disabled={downloadingImprovedResume}
+                  variant="outline"
+                  size="sm"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  DOCX
+                </Button>
+                <Button
+                  onClick={() => downloadImprovedResume('pdf')}
+                  disabled={downloadingImprovedResume}
+                  variant="outline"
+                  size="sm"
+                >
+                  <FileDown className="h-4 w-4 mr-2" />
+                  PDF
+                </Button>
+                <Button
+                  onClick={saveImprovedResume}
+                  disabled={savingImprovedResume}
+                  variant="default"
+                  size="sm"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {savingImprovedResume ? 'Saving...' : 'Save to Resumes'}
+                </Button>
+                <Button onClick={handleCopy} variant="outline" size="sm">
+                  {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                  {copied ? 'Copied!' : 'Copy'}
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
