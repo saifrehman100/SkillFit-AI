@@ -50,7 +50,7 @@ export default function LoginPage() {
         <div className="text-center">
           <h1 className="text-3xl font-heading font-bold">Welcome Back</h1>
           <p className="mt-2 text-muted-foreground">
-            Sign in to your account
+            Sign in to CareerAlign.ai
           </p>
         </div>
 
