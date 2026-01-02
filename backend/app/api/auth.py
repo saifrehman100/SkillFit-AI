@@ -190,12 +190,12 @@ async def get_usage(current_user: User = Depends(get_current_user)):
     """
     # Define plan limits
     PLAN_LIMITS = {
-        "free": 3,
+        "free": 10,  # 10 free job matches
         "pro": 999999,  # Unlimited for pro
         "enterprise": 999999
     }
 
-    limit = PLAN_LIMITS.get(current_user.plan, 3)
+    limit = PLAN_LIMITS.get(current_user.plan, 10)
     remaining = max(0, limit - current_user.matches_used)
 
     return UsageResponse(
