@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft, CheckCircle2, XCircle, Lightbulb, TrendingUp, Wand2, Copy, Check,
-  Download, FileText, FileDown, Sparkles, Target, AlertTriangle
+  Download, FileText, FileDown, Sparkles, Target, AlertTriangle, RefreshCw
 } from 'lucide-react';
 import { RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,6 +27,7 @@ export default function MatchDetailPage() {
   const [copied, setCopied] = useState(false);
   const [downloadingImprovedResume, setDownloadingImprovedResume] = useState(false);
   const [savingImprovedResume, setSavingImprovedResume] = useState(false);
+  const [rescanningResume, setRescanningResume] = useState(false);
 
   // Interview Prep
   const [interviewPrep, setInterviewPrep] = useState<InterviewPrepResponse | null>(null);
@@ -252,6 +253,21 @@ export default function MatchDetailPage() {
       toast.error(error.response?.data?.detail || 'Failed to save resume');
     } finally {
       setSavingImprovedResume(false);
+    }
+  };
+
+  const rescanImprovedResume = async (saveToCollection: boolean = false) => {
+    setRescanningResume(true);
+    try {
+      const response = await resumesAPI.rescanImprovedResume(id, saveToCollection);
+      toast.success(response.data.message);
+      if (saveToCollection) {
+        toast.info('Improved resume has been saved to your collection!');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Failed to rescan resume');
+    } finally {
+      setRescanningResume(false);
     }
   };
 
@@ -724,7 +740,7 @@ export default function MatchDetailPage() {
                   </span>
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   onClick={() => downloadImprovedResume('docx')}
                   disabled={downloadingImprovedResume}
@@ -742,6 +758,16 @@ export default function MatchDetailPage() {
                 >
                   <FileDown className="h-4 w-4 mr-2" />
                   PDF
+                </Button>
+                <Button
+                  onClick={() => rescanImprovedResume(false)}
+                  disabled={rescanningResume}
+                  variant="outline"
+                  size="sm"
+                  className="border-blue-500 text-blue-500"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  {rescanningResume ? 'Rescanning...' : 'Rescan'}
                 </Button>
                 <Button
                   onClick={saveImprovedResume}
