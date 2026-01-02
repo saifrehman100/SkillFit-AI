@@ -72,6 +72,12 @@ class ResetPasswordRequest(BaseModel):
     new_password: str = Field(min_length=8)
 
 
+class ProPlanInterestRequest(BaseModel):
+    """Request to express interest in Pro plan."""
+    email: EmailStr
+    feature_interested_in: Optional[str] = None  # What feature brought them here
+
+
 # Resume schemas
 class ResumeUpload(BaseModel):
     analyze: bool = Field(default=True, description="Run LLM analysis on upload")

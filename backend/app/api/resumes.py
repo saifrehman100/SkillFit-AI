@@ -3,8 +3,10 @@ Resume management endpoints.
 """
 import hashlib
 from typing import List, Optional
+from pydantic import BaseModel
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, Query
 from sqlalchemy.orm import Session
 
 from app.api.schemas import ResumeResponse, ResumeUpload
@@ -24,6 +26,12 @@ from app.core.logging_config import get_logger
 
 router = APIRouter()
 logger = get_logger(__name__)
+
+
+# Schema for improved resume download
+class ImprovedResumeDownloadRequest(BaseModel):
+    match_id: int
+    format: str = "pdf"  # pdf or docx
 
 
 @router.post("/upload", response_model=ResumeResponse, status_code=status.HTTP_201_CREATED)
@@ -981,4 +989,335 @@ async def download_cover_letter_pdf(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate cover letter PDF: {str(e)}"
+        )
+
+
+@router.get("/improved/{match_id}/download")
+async def download_improved_resume(
+    match_id: int,
+    format: str = Query("pdf", regex="^(pdf|docx)$"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Download the improved resume from a match as PDF or DOCX.
+    Requires the resume to have been rewritten first.
+    """
+    # Get match
+    match = db.query(Match).filter(
+        Match.id == match_id,
+        Match.user_id == current_user.id
+    ).first()
+
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Match not found"
+        )
+
+    if not match.improved_resume_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Improved resume not generated yet. Generate it first via /resumes/{id}/rewrite endpoint."
+        )
+
+    # Get the improved text
+    improved_text = match.improved_resume_data.get("improved_resume", "")
+    if not improved_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No improved resume text available"
+        )
+
+    # Get resume and job for metadata
+    resume = db.query(Resume).filter(Resume.id == match.resume_id).first()
+    job = db.query(Job).filter(Job.id == match.job_id).first()
+
+    try:
+        if format == "pdf":
+            from reportlab.lib.pagesizes import letter
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+            from reportlab.lib.styles import getSampleStyleSheet
+            from reportlab.lib.units import inch
+            from io import BytesIO
+
+            # Create PDF
+            pdf_buffer = BytesIO()
+            doc = SimpleDocTemplate(pdf_buffer, pagesize=letter,
+                                    rightMargin=0.75*inch, leftMargin=0.75*inch,
+                                    topMargin=0.75*inch, bottomMargin=0.75*inch)
+
+            styles = getSampleStyleSheet()
+            story = []
+
+            # Parse and add content
+            lines = improved_text.split('\n')
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    story.append(Spacer(1, 0.2*inch))
+                    continue
+
+                # Detect headers
+                is_header = any(keyword in line.upper() for keyword in [
+                    'SUMMARY', 'EXPERIENCE', 'EDUCATION', 'SKILLS',
+                    'PROJECTS', 'CERTIFICATIONS'
+                ])
+
+                if is_header:
+                    p = Paragraph(line, styles['Heading2'])
+                else:
+                    p = Paragraph(line, styles['Normal'])
+
+                story.append(p)
+                story.append(Spacer(1, 0.1*inch))
+
+            doc.build(story)
+            pdf_buffer.seek(0)
+
+            filename = f"improved_resume_{job.title.replace(' ', '_') if job else 'optimized'}_{datetime.now().strftime('%Y%m%d')}.pdf"
+
+            return StreamingResponse(
+                pdf_buffer,
+                media_type="application/pdf",
+                headers={"Content-Disposition": f"attachment; filename={filename}"}
+            )
+        else:  # docx
+            generator = ResumeGenerator()
+            docx_file = generator.create_professional_docx(
+                resume_text=improved_text,
+                candidate_name=None,
+                filename=f"improved_resume_{job.title.replace(' ', '_') if job else 'optimized'}.docx"
+            )
+
+            filename = f"improved_resume_{job.title.replace(' ', '_') if job else 'optimized'}_{datetime.now().strftime('%Y%m%d')}.docx"
+
+            return StreamingResponse(
+                docx_file,
+                media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                headers={"Content-Disposition": f"attachment; filename={filename}"}
+            )
+
+    except Exception as e:
+        logger.error("Failed to download improved resume", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate improved resume document. Please try again."
+        )
+
+
+@router.post("/improved/{match_id}/save")
+async def save_improved_resume(
+    match_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Save the improved resume from a match as a new resume in user's collection.
+    This creates a new resume entry that can be used for future job matches.
+    """
+    # Get match
+    match = db.query(Match).filter(
+        Match.id == match_id,
+        Match.user_id == current_user.id
+    ).first()
+
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Match not found"
+        )
+
+    if not match.improved_resume_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Improved resume not generated yet. Generate it first via /resumes/{id}/rewrite endpoint."
+        )
+
+    # Get the improved text
+    improved_text = match.improved_resume_data.get("improved_resume", "")
+    if not improved_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No improved resume text available"
+        )
+
+    # Get original resume and job for metadata
+    original_resume = db.query(Resume).filter(Resume.id == match.resume_id).first()
+    job = db.query(Job).filter(Job.id == match.job_id).first()
+
+    try:
+        # Calculate hash for deduplication
+        text_hash = hashlib.sha256(improved_text.encode()).hexdigest()
+
+        # Check if this improved resume was already saved
+        existing = db.query(Resume).filter(
+            Resume.user_id == current_user.id,
+            Resume.upload_hash == text_hash
+        ).first()
+
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This improved resume has already been saved to your collection"
+            )
+
+        # Create new resume record
+        new_filename = f"improved_{original_resume.filename.rsplit('.', 1)[0]}_{job.title.replace(' ', '_') if job else 'optimized'}.txt"
+
+        new_resume = Resume(
+            user_id=current_user.id,
+            filename=new_filename,
+            file_type="txt",
+            raw_text=improved_text,
+            file_size=len(improved_text.encode()),
+            upload_hash=text_hash,
+            file_path=None,  # Not uploaded to cloud storage
+            parsed_data={
+                "source": "improved_resume",
+                "original_resume_id": original_resume.id,
+                "job_id": job.id if job else None,
+                "match_id": match_id,
+                "improvements_applied": match.improved_resume_data.get("changes_made", [])
+            }
+        )
+
+        db.add(new_resume)
+        db.commit()
+        db.refresh(new_resume)
+
+        logger.info(
+            "Improved resume saved",
+            new_resume_id=new_resume.id,
+            match_id=match_id,
+            user_id=current_user.id
+        )
+
+        return {
+            "message": "Improved resume saved successfully!",
+            "resume": ResumeResponse.from_orm(new_resume),
+            "can_use_for_matching": True
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to save improved resume", error=str(e))
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save improved resume. Please try again."
+        )
+
+
+@router.post("/improved/{match_id}/rescan")
+async def rescan_improved_resume(
+    match_id: int,
+    save_to_collection: bool = Query(False, description="Automatically save to resume collection after scanning"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Rescan/reanalyze the improved resume with LLM.
+    Optionally save it to the user's resume collection.
+
+    This allows users to:
+    1. See what the LLM thinks of the improved resume
+    2. Get a fresh analysis with structured data
+    3. Optionally save it for future job matches
+    """
+    # Get match
+    match = db.query(Match).filter(
+        Match.id == match_id,
+        Match.user_id == current_user.id
+    ).first()
+
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Match not found"
+        )
+
+    if not match.improved_resume_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Improved resume not generated yet. Generate it first via /resumes/{id}/rewrite endpoint."
+        )
+
+    # Get the improved text
+    improved_text = match.improved_resume_data.get("improved_resume", "")
+    if not improved_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No improved resume text available"
+        )
+
+    try:
+        # Analyze the improved resume
+        api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+        llm_client = LLMFactory.create_client(
+            provider=settings.default_llm_provider,
+            api_key=api_key,
+            model=settings.default_model_name
+        )
+
+        analyzer = ResumeAnalyzer(llm_client)
+        analysis = await analyzer.analyze(improved_text)
+
+        # If user wants to save it, create a new resume
+        saved_resume = None
+        if save_to_collection:
+            # Calculate hash for deduplication
+            text_hash = hashlib.sha256(improved_text.encode()).hexdigest()
+
+            # Check if already saved
+            existing = db.query(Resume).filter(
+                Resume.user_id == current_user.id,
+                Resume.upload_hash == text_hash
+            ).first()
+
+            if not existing:
+                # Get original resume and job for metadata
+                original_resume = db.query(Resume).filter(Resume.id == match.resume_id).first()
+                job = db.query(Job).filter(Job.id == match.job_id).first()
+
+                new_filename = f"improved_{original_resume.filename.rsplit('.', 1)[0]}_{job.title.replace(' ', '_') if job else 'optimized'}.txt"
+
+                new_resume = Resume(
+                    user_id=current_user.id,
+                    filename=new_filename,
+                    file_type="txt",
+                    raw_text=improved_text,
+                    parsed_data=analysis,
+                    file_size=len(improved_text.encode()),
+                    upload_hash=text_hash,
+                    file_path=None
+                )
+
+                db.add(new_resume)
+                db.commit()
+                db.refresh(new_resume)
+
+                saved_resume = new_resume
+
+                logger.info(
+                    "Improved resume rescanned and saved",
+                    new_resume_id=new_resume.id,
+                    match_id=match_id
+                )
+
+        return {
+            "analysis": analysis,
+            "improved_text": improved_text,
+            "saved": save_to_collection and saved_resume is not None,
+            "saved_resume": ResumeResponse.from_orm(saved_resume) if saved_resume else None,
+            "message": "Resume analyzed successfully!" + (" Saved to your collection." if saved_resume else "")
+        }
+
+    except Exception as e:
+        logger.error("Failed to rescan improved resume", error=str(e))
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to analyze improved resume. Please try again."
         )

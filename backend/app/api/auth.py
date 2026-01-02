@@ -17,7 +17,8 @@ from app.api.schemas import (
     LLMSettingsResponse,
     UsageResponse,
     ForgotPasswordRequest,
-    ResetPasswordRequest
+    ResetPasswordRequest,
+    ProPlanInterestRequest
 )
 from app.core.auth import (
     create_access_token,
@@ -400,7 +401,7 @@ async def google_auth(
 
         # Generate JWT access token
         access_token = create_access_token(
-            data={"sub": user.email},
+            data={"sub": str(user.id)},
             expires_delta=timedelta(minutes=settings.access_token_expire_minutes)
         )
 
@@ -420,3 +421,73 @@ async def google_auth(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to authenticate with Google: {str(e)}"
         )
+
+
+@router.post("/pro-interest")
+async def express_pro_interest(
+    request: ProPlanInterestRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Express interest in upgrading to Pro plan.
+    Logs the interest for future notification when Pro launches.
+    """
+    from app.core.logging_config import get_logger
+    logger = get_logger(__name__)
+
+    logger.info(
+        "Pro plan interest expressed",
+        user_id=current_user.id,
+        email=request.email,
+        feature=request.feature_interested_in
+    )
+
+    return {
+        "message": "Thank you for your interest! We'll notify you when Pro features are available.",
+        "status": "registered"
+    }
+
+
+@router.get("/pricing")
+async def get_pricing():
+    """
+    Get pricing information and plan details.
+    """
+    return {
+        "plans": [
+            {
+                "name": "Free",
+                "price": 0,
+                "features": [
+                    "10 job matches",
+                    "3 cover letters",
+                    "3 interview preps",
+                    "Basic resume parsing"
+                ],
+                "limits": {
+                    "matches": 10,
+                    "cover_letters": 3,
+                    "interview_preps": 3
+                }
+            },
+            {
+                "name": "Pro",
+                "price": "Coming Soon",
+                "features": [
+                    "Unlimited job matches",
+                    "Unlimited cover letters",
+                    "Unlimited interview preps",
+                    "Advanced resume optimization",
+                    "Priority support",
+                    "Custom LLM preferences"
+                ],
+                "limits": {
+                    "matches": "unlimited",
+                    "cover_letters": "unlimited",
+                    "interview_preps": "unlimited"
+                },
+                "available": False
+            }
+        ],
+        "message": "Pro plan coming soon! Express your interest to get notified."
+    }

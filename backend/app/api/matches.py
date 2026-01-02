@@ -5,8 +5,9 @@ from typing import List, Optional
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 import io
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.api.schemas import MatchRequest, BatchMatchRequest, MatchResponse
@@ -505,9 +506,10 @@ async def generate_interview_prep(
 
     except Exception as e:
         logger.error("Interview prep generation failed", error=str(e))
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Interview prep generation failed: {str(e)}"
+            detail="Failed to generate interview preparation. Please try again."
         )
 
 
@@ -616,8 +618,153 @@ async def generate_cover_letter(
 
     except Exception as e:
         logger.error("Cover letter generation failed", error=str(e))
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Cover letter generation failed: {str(e)}"
+            detail="Failed to generate cover letter. Please try again."
+        )
+
+
+@router.get("/{match_id}/cover-letter/download")
+async def download_cover_letter(
+    match_id: int,
+    format: str = Query("pdf", regex="^(pdf|docx)$"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Download the generated cover letter as PDF or DOCX.
+    Requires cover letter to be generated first.
+    """
+    # Get match
+    match = db.query(Match).filter(
+        Match.id == match_id,
+        Match.user_id == current_user.id
+    ).first()
+
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Match not found"
+        )
+
+    if not match.cover_letter_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cover letter not generated yet. Generate it first."
+        )
+
+    # Get resume for contact info
+    resume = db.query(Resume).filter(Resume.id == match.resume_id).first()
+    job = db.query(Job).filter(Job.id == match.job_id).first()
+
+    try:
+        cover_letter_text = match.cover_letter_data.get("cover_letter", "")
+        candidate_name = match.cover_letter_data.get("candidate_name", "Candidate")
+        company = match.cover_letter_data.get("company", job.company if job else "Company")
+        job_title = match.cover_letter_data.get("job_title", job.title if job else "Position")
+
+        # Extract email from resume if available
+        candidate_email = current_user.email
+
+        if format == "pdf":
+            file_stream = CoverLetterGenerator.create_pdf(
+                cover_letter_text=cover_letter_text,
+                candidate_name=candidate_name,
+                candidate_email=candidate_email,
+                company=company,
+                job_title=job_title
+            )
+            media_type = "application/pdf"
+            filename = f"cover_letter_{job_title.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
+        else:  # docx
+            file_stream = CoverLetterGenerator.create_docx(
+                cover_letter_text=cover_letter_text,
+                candidate_name=candidate_name,
+                candidate_email=candidate_email,
+                company=company,
+                job_title=job_title
+            )
+            media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            filename = f"cover_letter_{job_title.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.docx"
+
+        return StreamingResponse(
+            file_stream,
+            media_type=media_type,
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    except Exception as e:
+        logger.error("Cover letter download failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate cover letter document. Please try again."
+        )
+
+
+@router.get("/{match_id}/interview-prep/download")
+async def download_interview_prep(
+    match_id: int,
+    format: str = Query("pdf", regex="^(pdf|docx)$"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Download the generated interview prep as PDF or DOCX.
+    Requires interview prep to be generated first.
+    """
+    # Get match
+    match = db.query(Match).filter(
+        Match.id == match_id,
+        Match.user_id == current_user.id
+    ).first()
+
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Match not found"
+        )
+
+    if not match.interview_prep_data:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Interview prep not generated yet. Generate it first."
+        )
+
+    # Get job info
+    job = db.query(Job).filter(Job.id == match.job_id).first()
+
+    try:
+        job_title = job.title if job else "Position"
+        company = job.company if job else "Company"
+
+        if format == "pdf":
+            file_stream = InterviewGenerator.create_pdf(
+                interview_data=match.interview_prep_data,
+                job_title=job_title,
+                company=company
+            )
+            media_type = "application/pdf"
+            filename = f"interview_prep_{job_title.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
+        else:  # docx
+            file_stream = InterviewGenerator.create_docx(
+                interview_data=match.interview_prep_data,
+                job_title=job_title,
+                company=company
+            )
+            media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            filename = f"interview_prep_{job_title.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.docx"
+
+        return StreamingResponse(
+            file_stream,
+            media_type=media_type,
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    except Exception as e:
+        logger.error("Interview prep download failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate interview prep document. Please try again."
         )
 

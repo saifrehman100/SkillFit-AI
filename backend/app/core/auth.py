@@ -26,7 +26,7 @@ pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto",
     bcrypt__ident="2b",  # Use bcrypt 2b variant
-    bcrypt__rounds=12,   # Set rounds explicitly
+    bcrypt__rounds=10,   # Balanced security and performance (was 12)
     bcrypt__truncate_error=True,  # Enable truncate error handling
 )
 

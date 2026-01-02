@@ -62,7 +62,7 @@ class InterviewGenerator:
             )
 
             response = await self.llm_client.generate(prompt)
-            result = self._parse_response(response)
+            result = self._parse_response(response.content)
 
             logger.info("Interview questions generated successfully")
             return result

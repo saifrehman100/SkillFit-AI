@@ -66,7 +66,7 @@ class CoverLetterGenerator:
                 candidate_name = self._extract_name(resume_text)
 
             result = {
-                "cover_letter": response,
+                "cover_letter": response.content,
                 "candidate_name": candidate_name,
                 "job_title": job_title,
                 "company": company,
