@@ -1,12 +1,11 @@
 """
-Email service for sending transactional emails.
+Email service for sending transactional emails via Brevo.
 Currently supports password reset emails.
 """
 import os
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from typing import Optional
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
 
 from app.core.logging_config import get_logger
 
@@ -14,21 +13,17 @@ logger = get_logger(__name__)
 
 
 class EmailService:
-    """Service for sending emails."""
+    """Service for sending emails via Brevo API."""
 
     def __init__(
         self,
-        smtp_host: str = None,
-        smtp_port: int = None,
-        smtp_user: str = None,
-        smtp_password: str = None,
-        from_email: str = None
+        brevo_api_key: str = None,
+        sender_email: str = None,
+        sender_name: str = None
     ):
-        self.smtp_host = smtp_host or os.getenv("SMTP_HOST", "smtp.gmail.com")
-        self.smtp_port = smtp_port or int(os.getenv("SMTP_PORT", "587"))
-        self.smtp_user = smtp_user or os.getenv("SMTP_USER", "")
-        self.smtp_password = smtp_password or os.getenv("SMTP_PASSWORD", "")
-        self.from_email = from_email or os.getenv("FROM_EMAIL", self.smtp_user)
+        self.brevo_api_key = brevo_api_key or os.getenv("BREVO_API_KEY", "")
+        self.sender_email = sender_email or os.getenv("SENDER_EMAIL", "noreply@skillfit-ai.com")
+        self.sender_name = sender_name or os.getenv("SENDER_NAME", "SkillFit AI")
 
     def send_password_reset_email(
         self,
@@ -37,7 +32,7 @@ class EmailService:
         frontend_url: str
     ) -> bool:
         """
-        Send password reset email.
+        Send password reset email via Brevo.
 
         Args:
             to_email: Recipient email address
@@ -52,7 +47,7 @@ class EmailService:
 
             subject = "SkillFit AI - Password Reset Request"
 
-            html_body = f"""
+            html_content = f"""
             <html>
               <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
                 <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -93,31 +88,10 @@ class EmailService:
             </html>
             """
 
-            text_body = f"""
-            Password Reset Request
-
-            Hello,
-
-            We received a request to reset your password for your SkillFit AI account.
-
-            Click the link below to reset your password:
-            {reset_link}
-
-            This link will expire in 1 hour.
-
-            If you didn't request this password reset, please ignore this email.
-            Your password will remain unchanged.
-
-            ---
-            SkillFit AI - AI-Powered Resume & Job Matcher
-            {frontend_url}
-            """
-
             return self._send_email(
                 to_email=to_email,
                 subject=subject,
-                html_body=html_body,
-                text_body=text_body
+                html_content=html_content
             )
 
         except Exception as e:
@@ -128,61 +102,68 @@ class EmailService:
         self,
         to_email: str,
         subject: str,
-        html_body: str,
-        text_body: str
+        html_content: str
     ) -> bool:
         """
-        Send an email.
+        Send transactional email via Brevo.
 
         Args:
-            to_email: Recipient email
+            to_email: Recipient email address
             subject: Email subject
-            html_body: HTML email body
-            text_body: Plain text email body
+            html_content: HTML body of the email
 
         Returns:
             True if sent successfully, False otherwise
+
+        Raises:
+            ApiException: If email sending fails
         """
-        try:
-            # Check if SMTP is configured
-            if not self.smtp_user or not self.smtp_password:
-                logger.warning(
-                    "SMTP not configured, skipping email send. "
-                    "Set SMTP_USER and SMTP_PASSWORD environment variables."
+        logger.info(f"Sending email to: {to_email} with subject: '{subject}'")
+
+        # Check if Brevo API key is configured
+        if not self.brevo_api_key:
+            logger.warning(
+                "Brevo API key not configured, skipping email send. "
+                "Set BREVO_API_KEY environment variable."
+            )
+            # In development, log that email would be sent
+            if "reset" in subject.lower():
+                logger.info(
+                    "Password reset email would be sent",
+                    to_email=to_email,
+                    subject=subject
                 )
-                # In development, log the token instead
-                if "reset" in subject.lower():
-                    logger.info(
-                        "Password reset email would be sent",
-                        to_email=to_email,
-                        html_contains_token=True
-                    )
-                return False
+            return False
 
-            # Create message
-            message = MIMEMultipart("alternative")
-            message["Subject"] = subject
-            message["From"] = self.from_email
-            message["To"] = to_email
+        try:
+            configuration = sib_api_v3_sdk.Configuration()
+            configuration.api_key['api-key'] = self.brevo_api_key
 
-            # Add text and HTML parts
-            part1 = MIMEText(text_body, "plain")
-            part2 = MIMEText(html_body, "html")
+            api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
+                sib_api_v3_sdk.ApiClient(configuration)
+            )
 
-            message.attach(part1)
-            message.attach(part2)
+            send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(
+                to=[{"email": to_email}],
+                sender={
+                    "name": self.sender_name,
+                    "email": self.sender_email
+                },
+                subject=subject,
+                html_content=html_content
+            )
 
-            # Send email with timeout
-            with smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=10) as server:
-                server.starttls()
-                server.login(self.smtp_user, self.smtp_password)
-                server.send_message(message)
-
-            logger.info("Email sent successfully", to_email=to_email, subject=subject)
+            api_response = api_instance.send_transac_email(send_smtp_email)
+            logger.info(
+                f"Email sent successfully to {to_email} (Message ID: {api_response.message_id})"
+            )
             return True
 
+        except ApiException as e:
+            logger.error(f"Failed to send email to {to_email}: {str(e)}", exc_info=True)
+            return False
         except Exception as e:
-            logger.error("Failed to send email", error=str(e), to_email=to_email)
+            logger.error(f"Unexpected error sending email to {to_email}: {str(e)}", exc_info=True)
             return False
 
 
