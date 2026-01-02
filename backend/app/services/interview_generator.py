@@ -5,9 +5,11 @@ Uses LLM to generate tailored interview questions and talking points.
 from typing import Dict, List, Any, Optional
 from io import BytesIO
 from docx import Document
-from docx.shared import Pt, Inches, RGBColor
+from docx.shared import Pt, Inches
+from docx.shared import RGBColor as DocxRGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from reportlab.lib.pagesizes import letter
+from reportlab.lib.colors import Color as PDFColor
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
@@ -282,7 +284,7 @@ Be specific, actionable, and tailored to this exact job and candidate combinatio
             run = title.add_run(f"Interview Preparation Guide")
             run.bold = True
             run.font.size = Pt(18)
-            run.font.color.rgb = RGBColor(31, 78, 120)
+            run.font.color.rgb = DocxRGBColor(31, 78, 120)
             title.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
             # Job info
@@ -297,7 +299,7 @@ Be specific, actionable, and tailored to this exact job and candidate combinatio
                 run = heading.add_run("Technical Questions")
                 run.bold = True
                 run.font.size = Pt(14)
-                run.font.color.rgb = RGBColor(31, 78, 120)
+                run.font.color.rgb = DocxRGBColor(31, 78, 120)
                 doc.add_paragraph()
 
                 for i, qa in enumerate(interview_data["technical_questions"], 1):
@@ -319,7 +321,7 @@ Be specific, actionable, and tailored to this exact job and candidate combinatio
                 run = heading.add_run("Behavioral Questions")
                 run.bold = True
                 run.font.size = Pt(14)
-                run.font.color.rgb = RGBColor(31, 78, 120)
+                run.font.color.rgb = DocxRGBColor(31, 78, 120)
                 doc.add_paragraph()
 
                 for i, qa in enumerate(interview_data["behavioral_questions"], 1):
@@ -339,7 +341,7 @@ Be specific, actionable, and tailored to this exact job and candidate combinatio
                 run = heading.add_run("Addressing Gaps & Weaknesses")
                 run.bold = True
                 run.font.size = Pt(14)
-                run.font.color.rgb = RGBColor(31, 78, 120)
+                run.font.color.rgb = DocxRGBColor(31, 78, 120)
                 doc.add_paragraph()
 
                 for i, qa in enumerate(interview_data["gap_questions"], 1):
@@ -359,7 +361,7 @@ Be specific, actionable, and tailored to this exact job and candidate combinatio
                 run = heading.add_run("Key Talking Points")
                 run.bold = True
                 run.font.size = Pt(14)
-                run.font.color.rgb = RGBColor(31, 78, 120)
+                run.font.color.rgb = DocxRGBColor(31, 78, 120)
                 doc.add_paragraph()
 
                 for point in interview_data["talking_points"]:
@@ -413,7 +415,7 @@ Be specific, actionable, and tailored to this exact job and candidate combinatio
                 'CustomTitle',
                 parent=styles['Heading1'],
                 fontSize=18,
-                textColor=RGBColor(31/255, 78/255, 120/255),
+                textColor=PDFColor(31/255, 78/255, 120/255),
                 spaceAfter=12,
                 alignment=1  # Center
             )
@@ -422,7 +424,7 @@ Be specific, actionable, and tailored to this exact job and candidate combinatio
                 'CustomHeading',
                 parent=styles['Heading2'],
                 fontSize=14,
-                textColor=RGBColor(31/255, 78/255, 120/255),
+                textColor=PDFColor(31/255, 78/255, 120/255),
                 spaceAfter=12,
                 spaceBefore=12
             )
