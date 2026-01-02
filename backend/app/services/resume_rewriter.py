@@ -14,7 +14,7 @@ class ResumeRewriter:
     """Service for rewriting and improving resume content."""
 
     REWRITE_PROMPT = """
-You are an expert resume writer and career coach. Your task is to rewrite and improve this resume to better match the target job description.
+You are an expert resume writer and ATS optimization specialist. Your task is to strategically rewrite this resume to maximize the match score using the EXACT SAME scoring system the Job Matcher uses.
 
 **Original Resume:**
 {resume_text}
@@ -22,49 +22,161 @@ You are an expert resume writer and career coach. Your task is to rewrite and im
 **Target Job Description:**
 {job_description}
 
-**Current Match Score:** {match_score}%
+**Current Match Score:** {match_score}/100
+
+**Current Score Breakdown:**
+{score_breakdown}
 
 **Recommendations to Address:**
 {recommendations}
 
-**Missing Skills to Incorporate (if applicable):**
+**Missing Skills:**
 {missing_skills}
 
-Please generate an improved version of this resume that:
-1. Addresses all the recommendations provided
-2. Incorporates relevant missing skills where truthful and applicable
-3. Improves the presentation and formatting
-4. Uses stronger action verbs and quantifiable achievements
-5. Tailors the content to match the job requirements better
-6. Maintains truthfulness - DO NOT fabricate experience or skills
+**SHARED SCORING CONTRACT (CRITICAL):**
 
-**Guidelines:**
-- Keep the same overall structure (contact info, experience, education, skills)
-- Enhance existing bullet points with stronger language and quantification
-- Reorder or emphasize relevant experience for this job
-- Add relevant keywords from the job description naturally
-- Make achievements more impactful with metrics where possible
-- DO NOT invent new jobs, skills, or qualifications
-- Only suggest adding skills if they can be reasonably learned quickly
+All score changes MUST map to the Match Score Calculation rules.
+
+Allowed score movements:
+- Skills Match: max 40 points TOTAL
+- Experience Relevance: max 30 points TOTAL
+- Keyword Optimization: max 15 points TOTAL
+- Achievements: max 10 points TOTAL
+- Education: max 5 points TOTAL
+
+If a category is already near its maximum, further improvements MUST NOT claim additional points.
+
+**Your Goal:** Analyze the score breakdown to identify WHERE points can be gained, then rewrite the resume to capture those points.
+
+**Critical Instructions - Follow These Exactly:**
+
+1. **PRIORITIZE MISSING SKILLS** - This is the #1 factor affecting match score:
+   - If a missing skill can be reasonably inferred from existing experience, ADD IT to the skills section
+   - If candidate used related technologies, explicitly mention the missing skill variants
+   - Example: If they used "JavaScript" and "React Native" is missing, add "React Native" if mobile development is shown
+   - Example: If they show "leadership" experience but "team leadership" is missing, add that phrase
+   - Add relevant missing keywords from the job description throughout the resume naturally
+   - Transform generic experience into specific skills the job requires
+
+2. **MATCH JOB DESCRIPTION LANGUAGE EXACTLY**:
+   - Use the EXACT terminology from the job description, not synonyms
+   - If job says "customer success" don't say "client relations" - use "customer success"
+   - Mirror the job's phrasing for technical skills, tools, and responsibilities
+   - This is critical for ATS keyword matching
+
+3. **QUANTIFY AND STRENGTHEN ACHIEVEMENTS**:
+   - Add metrics to every bullet point possible (%, $, #, time saved)
+   - Use power verbs that match the seniority level required
+   - Make accomplishments directly relevant to the job requirements
+
+4. **STRATEGIC RESTRUCTURING**:
+   - Lead with most relevant experience for THIS specific job
+   - Move less relevant experience lower or condense it
+   - Ensure skills section prominently features all required/preferred job skills candidate has touched
+   - Add a professional summary if missing, highlighting alignment with job
+
+5. **MAINTAIN TRUTHFULNESS** (Critical Constraint):
+   - NEVER fabricate jobs, degrees, or certifications
+   - Only add skills the candidate has demonstrably used or could reasonably claim
+   - If experience suggests familiarity with a tool/skill, you CAN claim it
+   - Example: If they automated tasks, they CAN claim "process automation" even if not explicitly stated
+
+**REALISTIC SCORE IMPACT RULES (MANDATORY):**
+
+You may ONLY claim score increases that fit within remaining headroom for each category.
+
+**Category-by-Category Improvement Strategy:**
+
+1. **Skills Match (Currently: {skills_points}/40, Headroom: {skills_headroom}):**
+   - Adding a truly MISSING required skill: +(40/total_required_skills) points each
+   - Adding a preferred skill: +(10/total_preferred_skills) points each
+   - Converting inferred → explicit wording: +0 points for Skills Match, but helps Keyword Optimization
+   - **Maximum possible gain:** {skills_headroom} points
+
+2. **Keyword Optimization (Currently: {keyword_points}/15, Headroom: {keyword_headroom}):**
+   - Adding exact job description keyword: +1-2 points each (max {keyword_headroom})
+   - Using exact terminology vs synonyms: +1-2 points total
+   - **Maximum possible gain:** {keyword_headroom} points
+
+3. **Experience Relevance (Currently: {experience_points}/30, Headroom: {experience_headroom}):**
+   - Cannot change actual years of experience
+   - Can only reorganize/emphasize relevant experience: +1-3 points max
+   - **Maximum possible gain:** {experience_headroom} points (likely small)
+
+4. **Achievements (Currently: {achievement_points}/10, Headroom: {achievement_headroom}):**
+   - Adding metrics to unquantified achievements: +1-2 points each
+   - Making achievements more relevant to job: +1-2 points total
+   - **Maximum possible gain:** {achievement_headroom} points
+
+5. **Education (Currently: {education_points}/5, Headroom: {education_headroom}):**
+   - Cannot change actual education/certifications
+   - **Maximum possible gain:** {education_headroom} points (likely 0)
 
 Format your response as JSON with the following structure:
 {{
-    "improved_resume": "The complete rewritten resume text",
-    "changes_summary": [
-        "Key change 1 description",
-        "Key change 2 description",
-        ...
+    "improved_resume": "The complete rewritten resume text with ALL improvements",
+    "changes_made": [
+        {{
+            "change": "Added Python to skills section",
+            "evidence": "Original resume shows 'automated data processing scripts'",
+            "category_affected": "skills_match",
+            "estimated_point_gain": 2.5
+        }},
+        {{
+            "change": "Changed 'coding' to 'software development' to match job terminology",
+            "category_affected": "keyword_optimization",
+            "estimated_point_gain": 1.0
+        }}
     ],
-    "estimated_new_score": <number 0-100>,
-    "score_improvement": <number>,
-    "key_improvements": [
-        "Improvement 1",
-        "Improvement 2",
-        ...
-    ]
+    "score_projection": {{
+        "skills_match": {{
+            "original_points": {skills_points},
+            "projected_points": <new value, max 40>,
+            "skills_added": ["Python", "Docker"],
+            "reasoning": "Added 2 missing required skills"
+        }},
+        "keyword_optimization": {{
+            "original_points": {keyword_points},
+            "projected_points": <new value, max 15>,
+            "keywords_added": ["software development", "agile"],
+            "reasoning": "Replaced synonyms with exact job terminology"
+        }},
+        "achievements": {{
+            "original_points": {achievement_points},
+            "projected_points": <new value, max 10>,
+            "achievements_quantified": 3,
+            "reasoning": "Added metrics to 3 bullet points"
+        }},
+        "experience_relevance": {{
+            "original_points": {experience_points},
+            "projected_points": <same as original>,
+            "note": "Cannot change actual experience, only reorganized for relevance"
+        }},
+        "education": {{
+            "original_points": {education_points},
+            "projected_points": <same as original>
+        }}
+    }},
+    "projected_total_score": <sum of all projected_points>,
+    "projected_improvement": <projected_total - current_total>,
+    "confidence_level": "high|medium|low",
+    "confidence_notes": "Explain any uncertainty in projections"
 }}
 
-Be professional, honest, and focus on presenting existing qualifications in the best light.
+**CRITICAL RULES FOR ESTIMATION:**
+
+1. **Respect Ceilings:** Never project a category score above its maximum
+2. **Calculate Honestly:** projected_improvement = sum of all (projected_points - original_points)
+3. **Show Your Math:** List every skill/keyword added and its estimated impact
+4. **Be Conservative:** If uncertain, round DOWN
+5. **Acknowledge Limits:** If skills_match is 38/40, say "limited room for improvement"
+
+Example: If skills_match is 35/40 and you add 2 required skills (out of 10 total required):
+- Point gain = 2 × (40/10) = 8 points
+- But ceiling is 40, so max new score = 40
+- Projected improvement = 40 - 35 = 5 points (NOT 8!)
+
+**Your projected_improvement MUST be realistic based on actual headroom available.**
 """
 
     QUICK_IMPROVE_PROMPT = """
@@ -95,7 +207,8 @@ Return ONLY the improved version as plain text.
         job_description: str,
         match_score: float,
         recommendations: Optional[List[Dict[str, Any]]] = None,
-        missing_skills: Optional[List[str]] = None
+        missing_skills: Optional[List[str]] = None,
+        score_breakdown: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Generate an improved version of a resume.
@@ -106,6 +219,7 @@ Return ONLY the improved version as plain text.
             match_score: Current match score (0-100)
             recommendations: List of improvement recommendations
             missing_skills: List of missing skills to address
+            score_breakdown: Detailed score breakdown by category (CRITICAL for accurate estimates)
 
         Returns:
             Dictionary with improved resume and analysis
@@ -129,12 +243,53 @@ Return ONLY the improved version as plain text.
             # Format missing skills
             skills_text = ", ".join(missing_skills) if missing_skills else "None specified"
 
+            # Extract category scores and calculate headroom
+            if score_breakdown:
+                skills_breakdown = score_breakdown.get('skills_match', {})
+                skills_points = skills_breakdown.get('points', 0) if isinstance(skills_breakdown, dict) else score_breakdown.get('skills_match', 0)
+
+                keyword_breakdown = score_breakdown.get('keyword_optimization', {})
+                keyword_points = keyword_breakdown.get('points', 0) if isinstance(keyword_breakdown, dict) else score_breakdown.get('keyword_optimization', 0)
+
+                experience_breakdown = score_breakdown.get('experience_relevance', {})
+                experience_points = experience_breakdown.get('points', 0) if isinstance(experience_breakdown, dict) else score_breakdown.get('experience_relevance', 0)
+
+                achievement_breakdown = score_breakdown.get('achievements', {})
+                achievement_points = achievement_breakdown.get('points', 0) if isinstance(achievement_breakdown, dict) else score_breakdown.get('achievements', 0)
+
+                education_breakdown = score_breakdown.get('education', {})
+                education_points = education_breakdown.get('points', 0) if isinstance(education_breakdown, dict) else score_breakdown.get('education', 0)
+
+                score_breakdown_text = json.dumps(score_breakdown, indent=2)
+            else:
+                # Fallback if no breakdown provided
+                skills_points = keyword_points = experience_points = achievement_points = education_points = 0
+                score_breakdown_text = "Score breakdown not available"
+
+            # Calculate headroom
+            skills_headroom = 40 - skills_points
+            keyword_headroom = 15 - keyword_points
+            experience_headroom = 30 - experience_points
+            achievement_headroom = 10 - achievement_points
+            education_headroom = 5 - education_points
+
             prompt = self.REWRITE_PROMPT.format(
                 resume_text=resume_text,
                 job_description=job_description,
                 match_score=match_score,
+                score_breakdown=score_breakdown_text,
                 recommendations=rec_text,
-                missing_skills=skills_text
+                missing_skills=skills_text,
+                skills_points=skills_points,
+                skills_headroom=skills_headroom,
+                keyword_points=keyword_points,
+                keyword_headroom=keyword_headroom,
+                experience_points=experience_points,
+                experience_headroom=experience_headroom,
+                achievement_points=achievement_points,
+                achievement_headroom=achievement_headroom,
+                education_points=education_points,
+                education_headroom=education_headroom
             )
 
             response = await self.llm_client.generate(

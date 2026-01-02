@@ -85,11 +85,21 @@ class InterviewGenerator:
     ) -> str:
         """Build the LLM prompt for interview question generation."""
 
+        # Determine difficulty level based on match score
+        if match_score is not None:
+            if match_score < 70:
+                difficulty_note = "Match score <70: Include more fundamental questions and strategies to demonstrate potential"
+            elif match_score >= 85:
+                difficulty_note = "Match score 85+: Include advanced/system-design questions for this strong candidate"
+            else:
+                difficulty_note = "Match score 70-85: Mix fundamentals with depth questions"
+        else:
+            difficulty_note = "Mix fundamental and depth questions"
+
         prompt = f"""You are an expert interview coach preparing a candidate for a job interview.
 
-**Job Information:**
-Position: {job_title}
-Company: {company}
+**Position:** {job_title}
+**Company:** {company}
 
 **Job Description:**
 {job_description}
@@ -100,13 +110,18 @@ Company: {company}
 
         if match_score is not None:
             prompt += f"\n**Match Score:** {match_score}/100"
+            prompt += f"\n**Difficulty Calibration:** {difficulty_note}"
 
         if missing_skills:
-            prompt += f"\n**Skills to Address:**\n" + "\n".join(f"- {skill}" for skill in missing_skills[:5])
+            prompt += f"\n\n**Skills to Address (Gaps):**\n" + "\n".join(f"- {skill}" for skill in missing_skills[:5])
 
         prompt += """
 
-Generate a comprehensive interview preparation guide with the following sections:
+---
+
+## GENERATE THE FOLLOWING SECTIONS
+
+Generate a comprehensive, tailored interview preparation guide with these sections:
 
 1. **TECHNICAL QUESTIONS** (5-7 questions)
    - Questions the interviewer is likely to ask based on job requirements
@@ -123,8 +138,13 @@ Generate a comprehensive interview preparation guide with the following sections
    - Provide honest, positive ways to address these
    - Turn weaknesses into growth opportunities
 
-4. **KEY TALKING POINTS** (5-7 points)
-   - Most impressive achievements to highlight
+4. **RED FLAG QUESTIONS** (2-3 questions)
+   - Questions that probe weak areas directly
+   - How to survive them without being dishonest
+   - Strategies to pivot to strengths
+
+5. **KEY TALKING POINTS** (5-7 points)
+   - Most impressive achievements to highlight (with metrics)
    - How candidate's experience aligns with role
    - Unique value propositions
    - Questions candidate should ask the interviewer
@@ -161,14 +181,26 @@ A: [How to reframe as growth opportunity]
 
 [Continue for all gap questions]
 
+## RED FLAG QUESTIONS
+
+Q1: [Direct question about a weakness/gap]
+A: [Strategy to acknowledge honestly without disqualifying yourself, then pivot to related strength]
+
+Q2: [Probing question about concern]
+A: [How to survive this question and redirect]
+
+[Continue for all red flag questions]
+
 ## KEY TALKING POINTS
 
-1. [Talking point with specific details]
-2. [Talking point]
-3. [Talking point]
+1. [Talking point with specific metrics and details]
+2. [How your experience directly solves their needs]
+3. [Unique value proposition]
+4. [Thoughtful questions to ask interviewer]
 [Continue for all talking points]
 
 Be specific, actionable, and tailored to this exact job and candidate combination.
+Reference actual achievements with metrics from the resume.
 """
 
         return prompt

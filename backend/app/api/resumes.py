@@ -293,6 +293,20 @@ async def rewrite_resume(
     recommendations = match.recommendations if match else []
     missing_skills = match.missing_skills if match else []
 
+    # TODO: Once Match model stores score_breakdown, use it here
+    # For now, create a basic breakdown from available data
+    score_breakdown = None
+    if match:
+        # Basic breakdown based on what we have
+        # Future: Match model should store full score_breakdown from matcher
+        score_breakdown = {
+            "skills_match": {"points": 0},  # Will be estimated by rewriter
+            "keyword_optimization": {"points": 0},
+            "experience_relevance": {"points": 0},
+            "achievements": {"points": 0},
+            "education": {"points": 0}
+        }
+
     try:
         # Get LLM client
         api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
@@ -309,7 +323,8 @@ async def rewrite_resume(
             job_description=job.description,
             match_score=match_score,
             recommendations=recommendations,
-            missing_skills=missing_skills
+            missing_skills=missing_skills,
+            score_breakdown=score_breakdown
         )
 
         response_data = {

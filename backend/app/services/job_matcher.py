@@ -15,7 +15,7 @@ class JobMatcher:
     """Service for matching resumes to job descriptions."""
 
     MATCHING_PROMPT = """
-You are an expert recruiter and career advisor. Analyze how well this resume matches the job description.
+You are an expert ATS (Applicant Tracking System) and recruiter analyzing resume-job fit. Your scoring must reflect how modern ATS systems and recruiters evaluate candidates.
 
 **Resume:**
 {resume_text}
@@ -23,52 +23,154 @@ You are an expert recruiter and career advisor. Analyze how well this resume mat
 **Job Description:**
 {job_description}
 
-Provide a comprehensive matching analysis with the following:
+**Your Task:** Provide a detailed, objective analysis of how well this resume matches the job requirements.
 
-1. **Match Score (0-100)**: An overall compatibility score where:
-   - 90-100: Exceptional match, candidate exceeds requirements
-   - 75-89: Strong match, candidate meets most requirements
-   - 60-74: Good match, candidate meets core requirements
-   - 40-59: Partial match, candidate has relevant experience but gaps exist
-   - 0-39: Poor match, significant gaps in qualifications
+**SHARED SCORING CONTRACT (CRITICAL):**
 
-2. **Missing Skills**: List specific skills, qualifications, or experience mentioned in the job description that are not evident in the resume
+All score changes MUST map to the Match Score Calculation rules.
 
-3. **Actionable Recommendations**: Provide 5-7 specific, actionable recommendations for the candidate to improve their fit for this role. For EACH recommendation, include:
-   - The specific action they should take
-   - Priority level (High/Medium/Low)
-   - Estimated impact on match score (+5 to +20 points)
-   - Why this will help
+Allowed score movements:
+- Skills Match: max 40 points TOTAL
+- Experience Relevance: max 30 points TOTAL
+- Keyword Optimization: max 15 points TOTAL
+- Achievements: max 10 points TOTAL
+- Education: max 5 points TOTAL
 
-4. **Explanation**: Provide a detailed explanation (2-3 paragraphs) of:
-   - Why you gave this score
-   - What the candidate does well
-   - What the candidate needs to improve
-   - How competitive they would be for this position
+If a category is already near its maximum, further improvements MUST NOT claim additional points.
 
-5. **Strengths**: List 3-5 key strengths that make this candidate suitable for the role
+Estimated improvements MUST:
+- Reference a specific scoring category
+- Respect category caps
+- Avoid double-counting inferred skills
 
-6. **Weaknesses**: List 3-5 key weaknesses or gaps that might hurt the candidate's chances
+**Scoring Methodology - Apply This Systematically:**
+
+**Match Score Calculation (0-100):**
+
+1. **Skills Match (40 points maximum):**
+   - Count required technical skills explicitly mentioned in resume (+4 points each, max 20)
+   - Count preferred/nice-to-have skills present (+2 points each, max 10)
+   - Related/transferable skills that demonstrate capability (+1 point each, max 10)
+   - NOTE: Give credit if the skill is mentioned ANYWHERE in resume, not just skills section
+   - Look for skills in job descriptions, achievements, tools used, technologies mentioned
+
+2. **Experience Relevance (30 points maximum):**
+   - Job titles/roles closely aligned with requirements (+10 points)
+   - Years of experience meets or exceeds requirement (+10 points)
+   - Industry/domain experience relevant (+10 points)
+   - NOTE: Experience can be demonstrated through projects, achievements, not just job titles
+
+3. **Keyword Optimization (15 points maximum):**
+   - Resume uses exact terminology from job description (+8 points)
+   - High density of relevant keywords throughout resume (+7 points)
+   - This is critical for ATS parsing - exact matches count heavily
+
+4. **Achievements & Impact (10 points maximum):**
+   - Quantified achievements demonstrating relevant capabilities (+5 points)
+   - Clear demonstration of responsibilities matching job needs (+5 points)
+
+5. **Education & Certifications (5 points maximum):**
+   - Education level meets requirements (+3 points)
+   - Relevant certifications mentioned (+2 points)
+
+**Scoring Ranges:**
+- 90-100: Exceptional - Has ALL required skills + most preferred, perfect keyword match, strong relevant experience
+- 75-89: Strong - Has 80%+ required skills, good keyword optimization, relevant experience
+- 60-74: Good - Has 60-79% required skills, decent keyword match, some relevant experience
+- 40-59: Moderate - Has 40-59% required skills, gaps exist but transferable skills present
+- 0-39: Weak - Missing majority of required skills and experience
+
+**Critical Instructions:**
+
+**Skill Recognition Rules (Critical):**
+1. **Explicit vs Inferred Skills**:
+   - If a skill is EXPLICITLY mentioned (e.g., "Python" in skills section), count it and mark as "explicit"
+   - If a skill is IMPLIED from context (e.g., used "automated scripts" implies scripting), count it but mark as "inferred"
+   - Important: Converting inferred → explicit in a rewrite does NOT add Skills Match points, but may add Keyword Optimization points (if headroom exists)
+
+2. **Accept Variants**: Treat reasonable variants as matches (React.js = React = ReactJS, leadership = team leadership)
+
+3. **Don't Over-Penalize**: A resume can still score 75+ even if missing some preferred skills, if it has strong required skills and good keyword optimization.
+
+4. **Consistency**: Two similar resumes should get similar scores. Use the point system above strictly.
+
+**Output Requirements:**
+
+1. **Missing Skills**: ONLY list skills that are:
+   - Explicitly required in job description
+   - Completely absent from resume (not mentioned anywhere)
+   - Not inferable from related skills shown
+
+2. **Actionable Recommendations**: Provide 5-7 specific recommendations with REALISTIC impact estimates:
+   - Adding a critical missing skill: +8-15 points
+   - Adding multiple related skills: +5-10 points
+   - Improving keyword density: +5-8 points
+   - Quantifying achievements: +3-5 points
+   - Restructuring/formatting: +2-3 points
+
+3. **Explanation**: Explain your score breakdown using the categories above.
 
 Format your response as JSON with the following structure:
 {{
     "match_score": <number 0-100>,
+    "score_breakdown": {{
+        "skills_match": {{
+            "points": <number 0-40>,
+            "required_skills_found": ["skill1", "skill2"],
+            "required_skills_missing": ["skill3"],
+            "preferred_skills_found": ["skill4"],
+            "preferred_skills_missing": ["skill5"],
+            "inferred_skills": ["skill6"]
+        }},
+        "experience_relevance": {{
+            "points": <number 0-30>,
+            "years_score": <number 0-10>,
+            "role_score": <number 0-10>,
+            "industry_score": <number 0-10>
+        }},
+        "keyword_optimization": {{
+            "points": <number 0-15>,
+            "keywords_found": ["keyword1", "keyword2"],
+            "keywords_missing": ["keyword3"]
+        }},
+        "achievements": {{
+            "points": <number 0-10>,
+            "quantified_count": <number>
+        }},
+        "education": {{
+            "points": <number 0-5>
+        }}
+    }},
+    "score_headroom": {{
+        "skills_match_remaining": <40 - skills_match_points>,
+        "experience_remaining": <30 - experience_points>,
+        "keyword_remaining": <15 - keyword_points>,
+        "achievements_remaining": <10 - achievement_points>,
+        "education_remaining": <5 - education_points>
+    }},
     "missing_skills": ["skill1", "skill2", ...],
     "recommendations": [
         {{
-            "action": "Specific action to take",
+            "action": "Add [specific skill] to skills section",
+            "category_affected": "skills_match|keyword_optimization|achievements|etc",
+            "current_category_score": <number>,
+            "max_category_score": <number>,
+            "realistic_point_gain": <number 0-10>,
             "priority": "High|Medium|Low",
-            "impact_estimate": <number 5-20>,
             "reason": "Why this will help"
         }},
         ...
     ],
-    "explanation": "Detailed explanation text",
+    "explanation": "Detailed explanation referencing score breakdown by category",
     "strengths": ["strength1", "strength2", ...],
     "weaknesses": ["weakness1", "weakness2", ...]
 }}
 
-Be honest and objective in your assessment. Focus on factual analysis rather than encouragement.
+**Important:**
+- Be consistent and objective. Use the point system above strictly.
+- Calculate realistic_point_gain considering category ceilings
+- If a category is near max, don't suggest improvements for that category
+- Show your work in the score_breakdown with actual lists of found/missing items
 """
 
     QUICK_MATCH_PROMPT = """

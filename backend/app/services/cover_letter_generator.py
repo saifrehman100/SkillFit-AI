@@ -101,11 +101,10 @@ class CoverLetterGenerator:
 
         name_instruction = f"The candidate's name is {candidate_name}." if candidate_name else "Extract the candidate's name from the resume."
 
-        prompt = f"""You are an expert career advisor and professional writer. Write a compelling, tailored cover letter.
+        prompt = f"""You are an expert cover letter writer. Create a compelling, tailored cover letter that demonstrates clear alignment between the candidate and role.
 
-**Job Information:**
-Position: {job_title}
-Company: {company}
+**Position:** {job_title}
+**Company:** {company}
 
 **Job Description:**
 {job_description}
@@ -113,34 +112,58 @@ Company: {company}
 **Candidate's Resume:**
 {resume_text}
 
-**Instructions:**
-1. {name_instruction}
-2. {tone_instruction}
-3. Structure the cover letter with:
-   - Opening paragraph: Express interest and briefly state why you're a strong fit
-   - 2-3 body paragraphs: Highlight specific, relevant accomplishments from the resume that align with the job requirements
-   - Closing paragraph: Express enthusiasm, mention next steps, and thank them
+---
 
-4. Be specific: Reference actual projects, achievements, and experiences from the resume
-5. Show you researched the company: Reference the specific role and requirements
-6. Keep it concise: Aim for 3-4 paragraphs, about 250-350 words
-7. Make it unique: Avoid generic phrases like "I am writing to apply for..."
-8. Use quantifiable achievements when possible
-9. Show personality while maintaining professionalism
+## STRUCTURE (3-4 paragraphs, 250-350 words)
 
-**Format:**
-Write ONLY the body of the cover letter (no date, address, or signature block - just the letter content).
-Start with the opening paragraph immediately.
+**Opening (2-3 sentences):**
+- Hook with specific enthusiasm for THIS role at THIS company
+- Immediately state your strongest qualification match
+- Avoid: "I am writing to apply for..." or any generic opener
 
-Do NOT include:
-- Today's date
-- Addresses
-- "Sincerely," or signature
-- Placeholder text like [Your Name]
+**Body Paragraph 1 (4-5 sentences):**
+- Lead with your most relevant achievement
+- Include specific metrics (numbers, percentages, outcomes)
+- Connect directly to a key requirement from the job description
 
-These will be added separately in the formatted document.
+**Body Paragraph 2 (4-5 sentences):**
+- Highlight 2-3 additional relevant skills/experiences
+- Show breadth of qualification
+- Reference specific tools/technologies mentioned in job description
 
-Write the cover letter now:
+**Closing (2-3 sentences):**
+- Express genuine interest in contributing to the company
+- Confident call to action
+- Thank them for consideration
+
+---
+
+## STYLE GUIDELINES
+
+{tone_instruction}
+
+**Do:**
+- Use active voice and strong verbs
+- Be specific (reference actual projects, metrics, tools)
+- Mirror 3-5 key phrases from job description naturally (ATS optimization)
+- Show personality while remaining professional
+
+**Don't:**
+- Use filler phrases ("I believe I would be a great fit")
+- Repeat the resume verbatim
+- Make unsubstantiated claims
+- Be generic - this must feel written for THIS specific job
+- Include: date, addresses, salutation ("Dear Hiring Manager"), or signature
+
+---
+
+## OUTPUT
+
+{name_instruction}
+
+Write ONLY the letter body. No date, addresses, "Dear...", or "Sincerely" - those are added separately.
+
+Begin immediately with the opening paragraph:
 """
 
         return prompt
