@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authAPI } from '@/lib/api/auth';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,8 +12,14 @@ function OAuthCallbackContent() {
   const searchParams = useSearchParams();
   const { refreshUser } = useAuth();
   const [status, setStatus] = useState<'loading' | 'error'>('loading');
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
+    // Prevent multiple calls (React StrictMode runs effects twice in dev)
+    if (hasProcessed.current) {
+      return;
+    }
+
     const handleCallback = async () => {
       const code = searchParams.get('code');
       const error = searchParams.get('error');
@@ -32,6 +38,9 @@ function OAuthCallbackContent() {
         return;
       }
 
+      // Mark as processed before making the API call
+      hasProcessed.current = true;
+
       try {
         const response = await authAPI.googleAuth(code);
 
@@ -47,12 +56,14 @@ function OAuthCallbackContent() {
         console.error('OAuth error:', error);
         toast.error(error.response?.data?.detail || 'Authentication failed');
         setStatus('error');
+        hasProcessed.current = false; // Reset on error so user can retry
         setTimeout(() => router.push('/login'), 2000);
       }
     };
 
     handleCallback();
-  }, [searchParams, router, refreshUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   return (
     <div className="flex min-h-screen items-center justify-center">
