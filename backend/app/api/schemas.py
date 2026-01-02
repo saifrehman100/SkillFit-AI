@@ -78,6 +78,13 @@ class ProPlanInterestRequest(BaseModel):
     feature_interested_in: Optional[str] = None  # What feature brought them here
 
 
+class ContactSalesRequest(BaseModel):
+    """Request to contact sales for Enterprise plan."""
+    email: EmailStr
+    plan: str = "Enterprise"
+    message: Optional[str] = None
+
+
 # Resume schemas
 class ResumeUpload(BaseModel):
     analyze: bool = Field(default=True, description="Run LLM analysis on upload")

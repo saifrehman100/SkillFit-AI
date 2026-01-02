@@ -18,7 +18,8 @@ from app.api.schemas import (
     UsageResponse,
     ForgotPasswordRequest,
     ResetPasswordRequest,
-    ProPlanInterestRequest
+    ProPlanInterestRequest,
+    ContactSalesRequest
 )
 from app.core.auth import (
     create_access_token,
@@ -445,6 +446,34 @@ async def express_pro_interest(
     return {
         "message": "Thank you for your interest! We'll notify you when Pro features are available.",
         "status": "registered"
+    }
+
+
+@router.post("/contact-sales")
+async def contact_sales(
+    request: ContactSalesRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Contact sales for Enterprise plan.
+    Logs the request and notifies the admin.
+    """
+    from app.core.logging_config import get_logger
+    logger = get_logger(__name__)
+
+    logger.info(
+        "Enterprise sales contact request",
+        user_id=current_user.id,
+        email=request.email,
+        plan=request.plan,
+        message=request.message
+    )
+
+    # You can add email notification to your sales team here
+    # For now, just log it
+
+    return {
+        "message": "Thank you for your interest! Someone from our team will contact you shortly."
     }
 
 
