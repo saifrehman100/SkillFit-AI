@@ -3,12 +3,14 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authAPI } from '@/lib/api/auth';
+import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 function OAuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { refreshUser } = useAuth();
   const [status, setStatus] = useState<'loading' | 'error'>('loading');
 
   useEffect(() => {
@@ -33,9 +35,11 @@ function OAuthCallbackContent() {
       try {
         const response = await authAPI.googleAuth(code);
 
-        // Store token and user data
+        // Store token
         localStorage.setItem('access_token', response.data.access_token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+
+        // Refresh user in AuthContext to update state
+        await refreshUser();
 
         toast.success('Logged in successfully with Google!');
         router.push('/dashboard');
@@ -48,7 +52,7 @@ function OAuthCallbackContent() {
     };
 
     handleCallback();
-  }, [searchParams, router]);
+  }, [searchParams, router, refreshUser]);
 
   return (
     <div className="flex min-h-screen items-center justify-center">
