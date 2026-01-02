@@ -1244,6 +1244,20 @@ async def rescan_improved_resume(
             detail="Improved resume not generated yet. Generate it first via /resumes/{id}/rewrite endpoint."
         )
 
+    # Check usage limits for free tier (rescanning counts toward match limit)
+    PLAN_LIMITS = {
+        "free": 10,
+        "pro": 999999,
+        "enterprise": 999999
+    }
+
+    limit = PLAN_LIMITS.get(current_user.plan, 10)
+    if current_user.matches_used >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Free tier limit reached ({limit} matches). Rescanning counts toward your match limit. Please upgrade to Pro for unlimited access."
+        )
+
     # Get the improved text
     improved_text = match.improved_resume_data.get("improved_resume", "")
     if not improved_text:
@@ -1296,6 +1310,10 @@ async def rescan_improved_resume(
             # Commit the updated match scores
             db.commit()
             db.refresh(match)
+
+        # Increment user's match usage counter (rescan counts as a match)
+        current_user.matches_used += 1
+        db.commit()
 
         # If user wants to save it, create a new resume
         saved_resume = None
