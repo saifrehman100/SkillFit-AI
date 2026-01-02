@@ -327,12 +327,25 @@ async def rewrite_resume(
             score_breakdown=score_breakdown
         )
 
+        # Map field names to match frontend expectations
         response_data = {
             "resume_id": resume_id,
             "job_id": job_id,
             "match_id": match.id if match else None,
             "original_score": match_score,
-            **result
+            "improved_resume": result.get("improved_resume", ""),
+            "changes_summary": [
+                change.get("change", str(change))
+                for change in result.get("changes_made", [])
+            ],
+            "estimated_new_score": result.get("projected_total_score", match_score),
+            "score_improvement": result.get("projected_improvement", 0),
+            "key_improvements": [
+                change.get("change", str(change))
+                for change in result.get("changes_made", [])[:5]  # Top 5 changes
+            ],
+            # Include all original data for reference
+            "_raw_response": result
         }
 
         # Cache the result if we have a match

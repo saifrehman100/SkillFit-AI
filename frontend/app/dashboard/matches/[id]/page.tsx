@@ -293,17 +293,6 @@ export default function MatchDetailPage() {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
-
-        <div className="flex gap-2">
-          <Button onClick={() => downloadResume('docx')} variant="outline" size="sm">
-            <FileText className="h-4 w-4 mr-2" />
-            Resume DOCX
-          </Button>
-          <Button onClick={() => downloadResume('pdf')} variant="outline" size="sm">
-            <FileDown className="h-4 w-4 mr-2" />
-            Resume PDF
-          </Button>
-        </div>
       </div>
 
       {/* Match & ATS Scores */}
