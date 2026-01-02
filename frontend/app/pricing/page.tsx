@@ -72,6 +72,7 @@ export default function PricingPage() {
     {
       name: 'Free',
       price: '$0',
+      period: undefined,
       description: 'Perfect for trying out SkillFit AI',
       features: [
         '10 AI-powered job matches',
@@ -95,6 +96,7 @@ export default function PricingPage() {
     {
       name: 'Pro',
       price: 'Coming Soon',
+      period: undefined,
       description: 'For serious job seekers',
       features: [
         'Unlimited AI-powered matches',
@@ -118,6 +120,7 @@ export default function PricingPage() {
     {
       name: 'Enterprise',
       price: 'Custom',
+      period: undefined,
       description: 'For teams and recruiters',
       features: [
         'Everything in Pro',
