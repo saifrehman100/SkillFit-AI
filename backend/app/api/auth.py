@@ -489,7 +489,7 @@ async def submit_feedback(request: UserFeedbackRequest):
     logger = get_logger(__name__)
 
     # Get admin email from environment variable or use default
-    admin_email = settings.admin_email if hasattr(settings, 'admin_email') else "saifrehman2806@gmail.com"
+    admin_email = settings.admin_email if hasattr(settings, 'admin_email') else "saif.rehman2498@gmail.com"
 
     logger.info(
         "User feedback submitted",
