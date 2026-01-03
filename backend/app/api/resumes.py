@@ -18,6 +18,8 @@ from app.models.database import get_db
 from app.models.models import User, Resume, Job, Match
 from app.services.resume_parser import ResumeParser, ResumeAnalyzer, ResumeParseError
 from app.services.resume_rewriter import ResumeRewriter
+from app.services.resume_rewriter_v2 import ResumeRewriterV2
+from app.services.ats_analyzer import ATSAnalyzer
 from app.services.resume_generator import ResumeGenerator
 from app.services.interview_generator import InterviewGenerator
 from app.services.cover_letter_generator import CoverLetterGenerator
@@ -364,34 +366,63 @@ async def rewrite_resume(
             model=settings.default_model_name
         )
 
-        # Rewrite resume
-        rewriter = ResumeRewriter(llm_client)
+        # Run ATS analysis for v2 rewriter
+        ats_analysis = None
+        try:
+            ats_analyzer = ATSAnalyzer(llm_client)
+            ats_analysis = ats_analyzer.analyze_ats_score(
+                resume_text=resume.raw_text,
+                job_description=job.description
+            )
+            logger.info("ATS analysis completed for resume rewrite", ats_score=ats_analysis.get('ats_score'))
+        except Exception as e:
+            logger.warning("ATS analysis failed for resume rewrite, continuing without it", error=str(e))
+
+        # Use v2 rewriter with ATS optimization
+        rewriter = ResumeRewriterV2(llm_client)
         result = await rewriter.rewrite_resume(
             resume_text=resume.raw_text,
             job_description=job.description,
             match_score=match_score,
             recommendations=recommendations,
             missing_skills=missing_skills,
-            score_breakdown=score_breakdown
+            score_breakdown=score_breakdown,
+            ats_analysis=ats_analysis
         )
 
-        # Map field names to match frontend expectations
+        # Map field names to match frontend expectations (supporting both v1 and v2 output)
+        final_scores = result.get("final_scores", {})
+        match_score_data = final_scores.get("match_score", {})
+        ats_score_data = final_scores.get("ats_score", {})
+
+        # Get changes summary from v2 format or fall back to v1
+        if "summary_of_changes" in result:
+            changes_summary = result.get("summary_of_changes", [])
+        else:
+            changes_summary = [
+                change.get("change", str(change))
+                for change in result.get("changes_made", [])
+            ]
+
         response_data = {
             "resume_id": resume_id,
             "job_id": job_id,
             "match_id": match.id if match else None,
             "original_score": match_score,
             "improved_resume": result.get("improved_resume", ""),
-            "changes_summary": [
-                change.get("change", str(change))
-                for change in result.get("changes_made", [])
-            ],
-            "estimated_new_score": result.get("projected_total_score", match_score),
-            "score_improvement": result.get("projected_improvement", 0),
-            "key_improvements": [
-                change.get("change", str(change))
-                for change in result.get("changes_made", [])[:5]  # Top 5 changes
-            ],
+            "changes_summary": changes_summary,
+            "estimated_new_score": match_score_data.get("projected", result.get("projected_total_score", match_score)),
+            "score_improvement": match_score_data.get("improvement", result.get("projected_improvement", 0)),
+            "key_improvements": changes_summary[:5],  # Top 5 changes
+            # v2 specific fields
+            "ats_score_original": ats_score_data.get("original"),
+            "ats_score_projected": ats_score_data.get("projected"),
+            "ats_score_improvement": ats_score_data.get("improvement"),
+            "warnings": result.get("warnings", []),
+            "blockers": result.get("blockers", []),
+            "hallucination_risk": result.get("hallucination_risk"),
+            "confidence": result.get("confidence"),
+            "confidence_notes": result.get("confidence_notes"),
             # Include all original data for reference
             "_raw_response": result
         }
