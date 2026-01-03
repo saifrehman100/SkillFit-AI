@@ -1,10 +1,18 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { FileText, Upload, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useResumes } from '@/lib/hooks/useResumes';
 import { resumesAPI } from '@/lib/api/resumes';
 import { formatDate } from '@/lib/utils';
@@ -12,16 +20,52 @@ import { toast } from 'sonner';
 
 export default function ResumesPage() {
   const { resumes, isLoading, mutate } = useResumes();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [resumeToDelete, setResumeToDelete] = useState<number | null>(null);
+  const [matchesCount, setMatchesCount] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this resume?')) return;
-
     try {
-      await resumesAPI.delete(id);
-      toast.success('Resume deleted successfully');
+      // First, get the matches count
+      const response = await resumesAPI.getMatchesCount(id);
+      const count = response.data.matches_count;
+
+      if (count > 0) {
+        // Show confirmation dialog
+        setResumeToDelete(id);
+        setMatchesCount(count);
+        setDeleteDialogOpen(true);
+      } else {
+        // No matches, delete directly
+        if (!confirm('Are you sure you want to delete this resume?')) return;
+        await resumesAPI.delete(id, false);
+        toast.success('Resume deleted successfully');
+        mutate();
+      }
+    } catch (error) {
+      toast.error('Failed to check resume matches');
+    }
+  };
+
+  const confirmDelete = async (keepMatches: boolean) => {
+    if (!resumeToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await resumesAPI.delete(resumeToDelete, keepMatches);
+      toast.success(
+        keepMatches
+          ? 'Resume archived successfully. Matches are preserved.'
+          : 'Resume and all matches deleted successfully'
+      );
       mutate();
+      setDeleteDialogOpen(false);
+      setResumeToDelete(null);
     } catch (error) {
       toast.error('Failed to delete resume');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -116,6 +160,51 @@ export default function ResumesPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Resume with Matches</DialogTitle>
+            <DialogDescription>
+              This resume has {matchesCount} match{matchesCount !== 1 ? 'es' : ''} associated with it.
+              What would you like to do?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <p className="text-sm text-muted-foreground">
+              If you keep the matches, the resume will be archived but the match data
+              (including cover letters, interview prep, and optimized resumes) will be preserved.
+            </p>
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={() => confirmDelete(true)}
+                disabled={isDeleting}
+                className="w-full"
+                variant="default"
+              >
+                {isDeleting ? 'Deleting...' : 'Keep Matches (Archive Resume)'}
+              </Button>
+              <Button
+                onClick={() => confirmDelete(false)}
+                disabled={isDeleting}
+                className="w-full"
+                variant="destructive"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Everything'}
+              </Button>
+              <Button
+                onClick={() => setDeleteDialogOpen(false)}
+                disabled={isDeleting}
+                className="w-full"
+                variant="outline"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -152,9 +152,11 @@ async def list_resumes(
 ):
     """
     List all resumes for the current user.
+    Excludes soft-deleted resumes.
     """
     resumes = db.query(Resume).filter(
-        Resume.user_id == current_user.id
+        Resume.user_id == current_user.id,
+        Resume.deleted_at.is_(None)
     ).offset(skip).limit(limit).all()
 
     return resumes
@@ -168,10 +170,12 @@ async def get_resume(
 ):
     """
     Get a specific resume by ID.
+    Excludes soft-deleted resumes.
     """
     resume = db.query(Resume).filter(
         Resume.id == resume_id,
-        Resume.user_id == current_user.id
+        Resume.user_id == current_user.id,
+        Resume.deleted_at.is_(None)
     ).first()
 
     if not resume:
@@ -183,14 +187,15 @@ async def get_resume(
     return resume
 
 
-@router.delete("/{resume_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_resume(
+@router.get("/{resume_id}/matches-count")
+async def get_resume_matches_count(
     resume_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Delete a resume.
+    Get the count of matches associated with a resume.
+    Used before deletion to inform the user.
     """
     resume = db.query(Resume).filter(
         Resume.id == resume_id,
@@ -203,17 +208,60 @@ async def delete_resume(
             detail="Resume not found"
         )
 
-    # Delete file from cloud storage if path exists
-    if resume.file_path:
-        storage = get_storage_client()
-        try:
-            storage.delete_file(resume.file_path)
-        except Exception as e:
-            # Log error but continue with database deletion
-            print(f"Warning: Failed to delete file from storage: {str(e)}")
+    matches_count = db.query(Match).filter(
+        Match.resume_id == resume_id,
+        Match.user_id == current_user.id
+    ).count()
 
-    db.delete(resume)
-    db.commit()
+    return {"matches_count": matches_count}
+
+
+@router.delete("/{resume_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_resume(
+    resume_id: int,
+    keep_matches: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a resume.
+    If keep_matches=true, performs soft delete (sets deleted_at timestamp).
+    If keep_matches=false, performs hard delete (removes from database).
+    """
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+
+    if not resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found"
+        )
+
+    # Check if there are matches
+    matches_count = db.query(Match).filter(
+        Match.resume_id == resume_id,
+        Match.user_id == current_user.id
+    ).count()
+
+    if matches_count > 0 and keep_matches:
+        # Soft delete: set deleted_at timestamp
+        resume.deleted_at = datetime.utcnow()
+        db.commit()
+    else:
+        # Hard delete: remove from database
+        # Delete file from cloud storage if path exists
+        if resume.file_path:
+            storage = get_storage_client()
+            try:
+                storage.delete_file(resume.file_path)
+            except Exception as e:
+                # Log error but continue with database deletion
+                print(f"Warning: Failed to delete file from storage: {str(e)}")
+
+        db.delete(resume)
+        db.commit()
 
     return None
 

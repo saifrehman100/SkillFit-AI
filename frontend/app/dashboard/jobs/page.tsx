@@ -26,16 +26,52 @@ export default function JobsPage() {
   const [importUrl, setImportUrl] = useState('');
   const [importing, setImporting] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [jobToDelete, setJobToDelete] = useState<number | null>(null);
+  const [matchesCount, setMatchesCount] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this job?')) return;
-
     try {
-      await jobsAPI.delete(id);
-      toast.success('Job deleted successfully');
+      // First, get the matches count
+      const response = await jobsAPI.getMatchesCount(id);
+      const count = response.data.matches_count;
+
+      if (count > 0) {
+        // Show confirmation dialog
+        setJobToDelete(id);
+        setMatchesCount(count);
+        setDeleteDialogOpen(true);
+      } else {
+        // No matches, delete directly
+        if (!confirm('Are you sure you want to delete this job?')) return;
+        await jobsAPI.delete(id, false);
+        toast.success('Job deleted successfully');
+        mutate();
+      }
+    } catch (error) {
+      toast.error('Failed to check job matches');
+    }
+  };
+
+  const confirmDelete = async (keepMatches: boolean) => {
+    if (!jobToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await jobsAPI.delete(jobToDelete, keepMatches);
+      toast.success(
+        keepMatches
+          ? 'Job archived successfully. Matches are preserved.'
+          : 'Job and all matches deleted successfully'
+      );
       mutate();
+      setDeleteDialogOpen(false);
+      setJobToDelete(null);
     } catch (error) {
       toast.error('Failed to delete job');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -180,6 +216,51 @@ export default function JobsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Job with Matches</DialogTitle>
+            <DialogDescription>
+              This job has {matchesCount} match{matchesCount !== 1 ? 'es' : ''} associated with it.
+              What would you like to do?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <p className="text-sm text-muted-foreground">
+              If you keep the matches, the job will be archived but the match data
+              (including cover letters, interview prep, and optimized resumes) will be preserved.
+            </p>
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={() => confirmDelete(true)}
+                disabled={isDeleting}
+                className="w-full"
+                variant="default"
+              >
+                {isDeleting ? 'Deleting...' : 'Keep Matches (Archive Job)'}
+              </Button>
+              <Button
+                onClick={() => confirmDelete(false)}
+                disabled={isDeleting}
+                className="w-full"
+                variant="destructive"
+              >
+                {isDeleting ? 'Deleting...' : 'Delete Everything'}
+              </Button>
+              <Button
+                onClick={() => setDeleteDialogOpen(false)}
+                disabled={isDeleting}
+                className="w-full"
+                variant="outline"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

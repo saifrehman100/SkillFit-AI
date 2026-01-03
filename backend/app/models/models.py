@@ -82,6 +82,7 @@ class Resume(Base):
     file_path = Column(String(512), nullable=True)  # GCS file path (resumes/user_id/filename)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)  # Soft delete timestamp
 
     # Relationships
     user = relationship("User", back_populates="resumes")
@@ -115,6 +116,7 @@ class Job(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True)  # Soft delete timestamp
 
     # Relationships
     user = relationship("User", back_populates="jobs")

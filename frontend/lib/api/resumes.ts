@@ -30,8 +30,13 @@ export const resumesAPI = {
   get: (id: number) =>
     apiClient.get<ResumeResponse>(`/resumes/${id}`),
 
-  delete: (id: number) =>
-    apiClient.delete(`/resumes/${id}`),
+  getMatchesCount: (id: number) =>
+    apiClient.get<{ matches_count: number }>(`/resumes/${id}/matches-count`),
+
+  delete: (id: number, keepMatches = false) =>
+    apiClient.delete(`/resumes/${id}`, {
+      params: { keep_matches: keepMatches }
+    }),
 
   rewrite: (resumeId: number, jobId: number, matchId?: number) =>
     apiClient.post<RewriteResponse>(`/resumes/${resumeId}/rewrite`, null, {

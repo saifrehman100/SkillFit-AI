@@ -172,8 +172,12 @@ async def list_jobs(
 ):
     """
     List all job descriptions for the current user.
+    Excludes soft-deleted jobs.
     """
-    query = db.query(Job).filter(Job.user_id == current_user.id)
+    query = db.query(Job).filter(
+        Job.user_id == current_user.id,
+        Job.deleted_at.is_(None)
+    )
 
     if active_only:
         query = query.filter(Job.is_active == True)
@@ -191,10 +195,12 @@ async def get_job(
 ):
     """
     Get a specific job description by ID.
+    Excludes soft-deleted jobs.
     """
     job = db.query(Job).filter(
         Job.id == job_id,
-        Job.user_id == current_user.id
+        Job.user_id == current_user.id,
+        Job.deleted_at.is_(None)
     ).first()
 
     if not job:
@@ -240,15 +246,18 @@ async def update_job(
     return job
 
 
-@router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_job(
+@router.get("/{job_id}/matches-count")
+async def get_job_matches_count(
     job_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Delete a job description.
+    Get the count of matches associated with a job.
+    Used before deletion to inform the user.
     """
+    from app.models.models import Match
+
     job = db.query(Job).filter(
         Job.id == job_id,
         Job.user_id == current_user.id
@@ -260,7 +269,53 @@ async def delete_job(
             detail="Job not found"
         )
 
-    db.delete(job)
-    db.commit()
+    matches_count = db.query(Match).filter(
+        Match.job_id == job_id,
+        Match.user_id == current_user.id
+    ).count()
+
+    return {"matches_count": matches_count}
+
+
+@router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_job(
+    job_id: int,
+    keep_matches: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Delete a job description.
+    If keep_matches=true, performs soft delete (sets deleted_at timestamp).
+    If keep_matches=false, performs hard delete (removes from database).
+    """
+    from app.models.models import Match
+    from datetime import datetime
+
+    job = db.query(Job).filter(
+        Job.id == job_id,
+        Job.user_id == current_user.id
+    ).first()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+
+    # Check if there are matches
+    matches_count = db.query(Match).filter(
+        Match.job_id == job_id,
+        Match.user_id == current_user.id
+    ).count()
+
+    if matches_count > 0 and keep_matches:
+        # Soft delete: set deleted_at timestamp
+        job.deleted_at = datetime.utcnow()
+        db.commit()
+    else:
+        # Hard delete: remove from database
+        db.delete(job)
+        db.commit()
 
     return None

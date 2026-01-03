@@ -16,9 +16,14 @@ export const jobsAPI = {
   get: (id: number) =>
     apiClient.get<JobResponse>(`/jobs/${id}`),
 
+  getMatchesCount: (id: number) =>
+    apiClient.get<{ matches_count: number }>(`/jobs/${id}/matches-count`),
+
   update: (id: number, data: JobCreateRequest) =>
     apiClient.put<JobResponse>(`/jobs/${id}`, data),
 
-  delete: (id: number) =>
-    apiClient.delete(`/jobs/${id}`),
+  delete: (id: number, keepMatches = false) =>
+    apiClient.delete(`/jobs/${id}`, {
+      params: { keep_matches: keepMatches }
+    }),
 };
