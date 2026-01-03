@@ -1,4 +1,5 @@
 """
+
 Vector search service for finding similar resumes and jobs.
 Uses pgvector for efficient similarity search.
 """

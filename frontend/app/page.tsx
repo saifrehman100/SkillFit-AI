@@ -28,11 +28,11 @@ export default function LandingPage() {
       <main className="flex-1">
         <section className="container mx-auto px-4 py-24 text-center">
           <h2 className="text-5xl md:text-6xl font-heading font-bold mb-6">
-            AI-Powered Resume Matching
+            AI-Powered Career Tools
           </h2>
           <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-            Get instant insights on how well your resume matches job descriptions.
-            Powered by advanced AI models for accurate skill analysis.
+            Match resumes to jobs, generate tailored cover letters, and prepare for interviews.
+            Powered by multiple AI models (GPT-4, Claude, Gemini) for accurate analysis.
           </p>
           <div className="flex gap-4 justify-center">
             <Link
@@ -80,10 +80,10 @@ export default function LandingPage() {
               <div className="p-6 border border-border rounded-lg">
                 <div className="text-4xl mb-4">💼</div>
                 <h4 className="text-xl font-heading font-semibold mb-2">
-                  LinkedIn Integration
+                  Cover Letters & Interview Prep
                 </h4>
                 <p className="text-muted-foreground">
-                  Scan LinkedIn job postings and instantly see how well you match.
+                  Generate tailored cover letters and get AI-powered interview questions with suggested answers.
                 </p>
               </div>
             </div>
@@ -125,9 +125,9 @@ export default function LandingPage() {
                 3
               </div>
               <div>
-                <h4 className="text-xl font-semibold mb-2">Get Instant Results</h4>
+                <h4 className="text-xl font-semibold mb-2">Get Comprehensive Results</h4>
                 <p className="text-muted-foreground">
-                  Receive detailed match scores, missing skills analysis, and recommendations to improve your chances.
+                  Receive match scores, AI-optimized resumes, personalized cover letters, and interview prep questions.
                 </p>
               </div>
             </div>
@@ -138,7 +138,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-border">
         <div className="container mx-auto px-4 py-8 text-center text-muted-foreground">
-          <p>&copy; 2025 CareerAlign.ai. Powered by advanced AI models.</p>
+          <p>&copy; 2025 CareerAlign.ai. Powered by GPT-4, Claude, and Gemini.</p>
         </div>
       </footer>
     </div>
