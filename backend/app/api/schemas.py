@@ -85,6 +85,13 @@ class ContactSalesRequest(BaseModel):
     message: Optional[str] = None
 
 
+class UserFeedbackRequest(BaseModel):
+    """User feedback request."""
+    name: str
+    email: EmailStr
+    message: str
+
+
 # Resume schemas
 class ResumeUpload(BaseModel):
     analyze: bool = Field(default=True, description="Run LLM analysis on upload")

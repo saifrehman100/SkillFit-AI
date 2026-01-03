@@ -1,6 +1,6 @@
 """
 Email service for sending transactional emails via Brevo.
-Currently supports password reset emails.
+Supports password reset emails and user feedback.
 """
 import os
 from typing import Optional
@@ -96,6 +96,65 @@ class EmailService:
 
         except Exception as e:
             logger.error("Failed to send password reset email", error=str(e))
+            return False
+
+    def send_feedback_email(
+        self,
+        user_email: str,
+        user_name: str,
+        feedback_message: str,
+        admin_email: str
+    ) -> bool:
+        """
+        Send user feedback to admin email.
+
+        Args:
+            user_email: User's email address
+            user_name: User's name (or email if name not provided)
+            feedback_message: The feedback content
+            admin_email: Admin email to receive feedback
+
+        Returns:
+            True if sent successfully, False otherwise
+        """
+        try:
+            subject = f"CareerAlign.ai - User Feedback from {user_name}"
+
+            html_content = f"""
+            <html>
+              <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                  <h2 style="color: #1f4e78;">New User Feedback</h2>
+
+                  <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                    <p><strong>From:</strong> {user_name}</p>
+                    <p><strong>Email:</strong> {user_email}</p>
+                  </div>
+
+                  <h3 style="color: #1f4e78;">Feedback Message:</h3>
+                  <div style="background-color: #fff; border-left: 4px solid #1f4e78; padding: 15px; margin: 20px 0;">
+                    <p style="white-space: pre-wrap;">{feedback_message}</p>
+                  </div>
+
+                  <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+
+                  <p style="font-size: 12px; color: #666;">
+                    This feedback was submitted via CareerAlign.ai<br>
+                    Reply directly to {user_email} to respond to the user.
+                  </p>
+                </div>
+              </body>
+            </html>
+            """
+
+            return self._send_email(
+                to_email=admin_email,
+                subject=subject,
+                html_content=html_content
+            )
+
+        except Exception as e:
+            logger.error("Failed to send feedback email", error=str(e))
             return False
 
     def _send_email(

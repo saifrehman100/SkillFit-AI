@@ -19,7 +19,8 @@ from app.api.schemas import (
     ForgotPasswordRequest,
     ResetPasswordRequest,
     ProPlanInterestRequest,
-    ContactSalesRequest
+    ContactSalesRequest,
+    UserFeedbackRequest
 )
 from app.core.auth import (
     create_access_token,
@@ -475,6 +476,52 @@ async def contact_sales(
     return {
         "message": "Thank you for your interest! Someone from our team will contact you shortly."
     }
+
+
+@router.post("/feedback")
+async def submit_feedback(request: UserFeedbackRequest):
+    """
+    Submit user feedback.
+    Sends feedback to admin email via Brevo.
+    This endpoint is public (no authentication required) for landing page feedback.
+    """
+    from app.core.logging_config import get_logger
+    logger = get_logger(__name__)
+
+    # Get admin email from environment variable or use default
+    admin_email = settings.admin_email if hasattr(settings, 'admin_email') else "saifrehman2806@gmail.com"
+
+    logger.info(
+        "User feedback submitted",
+        user_email=request.email,
+        user_name=request.name
+    )
+
+    try:
+        # Send feedback email
+        success = email_service.send_feedback_email(
+            user_email=request.email,
+            user_name=request.name,
+            feedback_message=request.message,
+            admin_email=admin_email
+        )
+
+        if success:
+            return {
+                "message": "Thank you for your feedback! We'll get back to you soon."
+            }
+        else:
+            logger.warning("Feedback email not sent (Brevo may not be configured)")
+            return {
+                "message": "Feedback received and logged. Thank you!"
+            }
+
+    except Exception as e:
+        logger.error("Failed to process feedback", error=str(e))
+        # Still return success to user, feedback is logged
+        return {
+            "message": "Feedback received and logged. Thank you!"
+        }
 
 
 @router.get("/pricing")
