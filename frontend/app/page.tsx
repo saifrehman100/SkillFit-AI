@@ -198,7 +198,7 @@ export default function LandingPage() {
 
             <h2 className="text-2xl font-heading font-bold mb-4">Send Feedback</h2>
             <p className="text-sm text-muted-foreground mb-6">
-              We'd love to hear from you! Share your thoughts, suggestions, or report issues.
+              We&apos;d love to hear from you! Share your thoughts, suggestions, or report issues.
             </p>
 
             <form onSubmit={handleFeedbackSubmit} className="space-y-4">
