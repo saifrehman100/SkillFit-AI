@@ -196,15 +196,22 @@ async def get_usage(current_user: User = Depends(get_current_user)):
         "enterprise": 999999
     }
 
-    limit = PLAN_LIMITS.get(current_user.plan, 10)
-    remaining = max(0, limit - current_user.matches_used)
+    # Admin users have unlimited access
+    if current_user.is_admin:
+        limit = 999999
+        remaining = 999999
+        can_create = True
+    else:
+        limit = PLAN_LIMITS.get(current_user.plan, 10)
+        remaining = max(0, limit - current_user.matches_used)
+        can_create = remaining > 0
 
     return UsageResponse(
         plan=current_user.plan,
         matches_used=current_user.matches_used,
         matches_limit=limit,
         matches_remaining=remaining,
-        can_create_match=remaining > 0
+        can_create_match=can_create
     )
 
 

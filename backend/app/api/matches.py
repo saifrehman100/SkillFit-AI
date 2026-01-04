@@ -62,7 +62,8 @@ async def create_match(
     }
 
     limit = PLAN_LIMITS.get(current_user.plan, 10)
-    if current_user.matches_used >= limit:
+    # Admin users bypass usage limits
+    if not current_user.is_admin and current_user.matches_used >= limit:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Free tier limit reached ({limit} matches). Please upgrade to Pro for unlimited matches."
@@ -217,7 +218,8 @@ async def create_batch_matches(
 
     limit = PLAN_LIMITS.get(current_user.plan, 10)
     matches_to_create = len(batch_request.resume_ids)
-    if current_user.matches_used + matches_to_create > limit:
+    # Admin users bypass usage limits
+    if not current_user.is_admin and current_user.matches_used + matches_to_create > limit:
         remaining = max(0, limit - current_user.matches_used)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -460,7 +462,8 @@ async def generate_interview_prep(
     }
 
     limit = INTERVIEW_PREP_LIMITS.get(current_user.plan, 3)
-    if current_user.interview_preps_used >= limit:
+    # Admin users bypass usage limits
+    if not current_user.is_admin and current_user.interview_preps_used >= limit:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Free tier limit reached ({limit} interview preps). Please upgrade to Pro for unlimited access."
@@ -567,7 +570,8 @@ async def generate_cover_letter(
     }
 
     limit = COVER_LETTER_LIMITS.get(current_user.plan, 3)
-    if current_user.cover_letters_used >= limit:
+    # Admin users bypass usage limits
+    if not current_user.is_admin and current_user.cover_letters_used >= limit:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Free tier limit reached ({limit} cover letters). Please upgrade to Pro for unlimited access."

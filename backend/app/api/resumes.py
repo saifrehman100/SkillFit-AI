@@ -332,7 +332,8 @@ async def rewrite_resume(
     }
 
     limit = RESUME_REWRITE_LIMITS.get(current_user.plan, 3)
-    if current_user.resume_rewrites_used >= limit:
+    # Admin users bypass usage limits
+    if not current_user.is_admin and current_user.resume_rewrites_used >= limit:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Free tier limit reached ({limit} resume rewrites). Please upgrade to Pro for unlimited access."
@@ -1359,7 +1360,8 @@ async def rescan_improved_resume(
     }
 
     limit = PLAN_LIMITS.get(current_user.plan, 10)
-    if current_user.matches_used >= limit:
+    # Admin users bypass usage limits
+    if not current_user.is_admin and current_user.matches_used >= limit:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Free tier limit reached ({limit} matches). Rescanning counts toward your match limit. Please upgrade to Pro for unlimited access."
