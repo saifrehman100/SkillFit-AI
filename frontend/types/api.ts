@@ -28,6 +28,7 @@ export interface UserResponse {
   is_active: boolean;
   created_at: string;
   api_key: string | null;
+  tour_completed: boolean;
 }
 
 // ============ Resume ============
