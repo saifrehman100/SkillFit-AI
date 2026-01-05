@@ -18,6 +18,8 @@ def remove_tables_from_resume(resume_text: str) -> str:
     This is a safety net to ensure LLM-generated resumes are ATS-friendly
     even if the prompt instructions weren't perfectly followed.
 
+    Uses table density detection to catch malformed tables without clean borders.
+
     Args:
         resume_text: Resume text potentially containing tables
 
@@ -28,6 +30,20 @@ def remove_tables_from_resume(resume_text: str) -> str:
     cleaned_lines = []
 
     for line in lines:
+        # Skip empty lines
+        if not line.strip():
+            cleaned_lines.append(line)
+            continue
+
+        # Table density detection: if >40% of line is table characters, it's likely a table
+        table_chars = sum(c in '|+-=' for c in line)
+        line_length = max(len(line), 1)
+        table_density = table_chars / line_length
+
+        if table_density > 0.4:
+            # High density of table characters - skip this line
+            continue
+
         # Skip lines that are table borders (mostly +, -, =, | characters)
         if re.match(r'^[\s|+\-=]{4,}$', line):
             continue
@@ -48,13 +64,127 @@ def remove_tables_from_resume(resume_text: str) -> str:
     return final_text
 
 
+def normalize_bullets(resume_text: str) -> str:
+    """
+    Replace non-standard bullet characters with standard bullet (•).
+
+    ATS systems can struggle with special Unicode bullets, dashes, and asterisks.
+    This function standardizes all bullets to • (U+2022).
+
+    Args:
+        resume_text: Resume text potentially containing non-standard bullets
+
+    Returns:
+        Resume text with normalized bullets
+    """
+    # Map of problematic bullet characters to standard bullet
+    bullet_replacements = {
+        '●': '•',  # Black circle
+        '▪': '•',  # Black small square
+        '◆': '•',  # Black diamond
+        '★': '•',  # Black star
+        '☆': '•',  # White star
+        '→': '•',  # Arrow
+        '►': '•',  # Black right-pointing pointer
+        '◦': '•',  # White bullet
+        '‣': '•',  # Triangular bullet
+        '⁃': '•',  # Hyphen bullet
+        '▸': '•',  # Black right-pointing small triangle
+    }
+
+    # Replace special bullets
+    for old, new in bullet_replacements.items():
+        resume_text = resume_text.replace(old, new)
+
+    # Also handle lines starting with - or * (convert to •)
+    lines = resume_text.split('\n')
+    fixed_lines = []
+
+    for line in lines:
+        # Match lines starting with - or * followed by space (list items)
+        match = re.match(r'^(\s*)[-*]\s+(.+)$', line)
+        if match:
+            indent = match.group(1)
+            content = match.group(2)
+            line = f"{indent}• {content}"
+        fixed_lines.append(line)
+
+    return '\n'.join(fixed_lines)
+
+
+def fix_line_lengths(resume_text: str, max_length: int = 100) -> str:
+    """
+    Soft-wrap lines that exceed max_length while preserving bullet structure.
+
+    Long lines can cause ATS parsing issues. This function wraps lines at word
+    boundaries while maintaining indentation for bullet points.
+
+    Args:
+        resume_text: Resume text potentially containing long lines
+        max_length: Target maximum line length (default: 100)
+
+    Returns:
+        Resume text with wrapped lines
+    """
+    lines = resume_text.split('\n')
+    fixed_lines = []
+
+    for line in lines:
+        # Keep short lines as-is
+        if len(line) <= max_length:
+            fixed_lines.append(line)
+            continue
+
+        # Check if it's a bullet point
+        bullet_match = re.match(r'^(\s*•\s*)', line)
+        if bullet_match:
+            indent = bullet_match.group(1)
+            content = line[len(indent):]
+            continuation_indent = ' ' * len(indent)
+        else:
+            indent = ''
+            content = line
+            # Match existing indentation
+            space_match = re.match(r'^(\s*)', line)
+            if space_match:
+                continuation_indent = space_match.group(1) + '  '
+            else:
+                continuation_indent = '  '
+
+        # Word wrap the content
+        words = content.split()
+        current_line = indent
+
+        for word in words:
+            test_line = current_line + (' ' if current_line.strip() else '') + word
+
+            if len(test_line) <= max_length:
+                current_line = test_line
+            else:
+                if current_line.strip():
+                    fixed_lines.append(current_line)
+                current_line = continuation_indent + word
+
+        if current_line.strip():
+            fixed_lines.append(current_line)
+
+    return '\n'.join(fixed_lines)
+
+
 class ResumeRewriterV2:
     """Service for rewriting and improving resume content with ATS optimization."""
 
     REWRITE_PROMPT = """
-You are an expert resume writer and ATS optimization specialist. Your task is to strategically rewrite this resume to maximize BOTH Match Score AND ATS Score.
+# RESUME OPTIMIZATION PROMPT v2.0
+## Production-Ready Version (Consolidated Claude + GPT Feedback)
 
-**IMPORTANT:** All scoring projections are heuristic estimates, not exact ATS calculations.
+You are an expert resume writer and ATS optimization specialist. Your task is to strategically rewrite this resume to maximize BOTH the match score AND the ATS compatibility score while maintaining complete truthfulness.
+
+**CRITICAL**: Your projected improvements are estimates. The system will independently rescan the improved resume to verify actual gains. Be conservative in projections.
+
+---
+
+## INPUT DATA
 
 **Original Resume:**
 {resume_text}
@@ -65,74 +195,65 @@ You are an expert resume writer and ATS optimization specialist. Your task is to
 **Current Match Score:** {match_score}/100
 
 **Current Score Breakdown:**
-{score_breakdown}
+- Skills Match: {skills_points}/40 points
+- Experience Relevance: {experience_points}/30 points
+- Keyword Optimization: {keyword_points}/15 points
+- Achievements: {achievement_points}/10 points
+- Education: {education_points}/5 points
 
 **Current ATS Score:** {ats_score}/100
 
-**ATS Analysis:**
-{ats_analysis}
+**ATS Component Scores:**
+- Formatting Score: {formatting_score}/100
+- Section Score: {section_score}/100
+- Contact Score: {contact_score}/100
+- Keyword Match: {keyword_match_percentage}%
+
+**ATS Issues Detected:**
+{ats_issues}
+
+**Missing Skills (from job requirements):**
+{missing_skills}
 
 **Recommendations:**
 {recommendations}
 
-**Missing Skills:**
-{missing_skills}
+**Headroom Available:**
+- Skills Match: {skills_headroom} points remaining
+- Experience Relevance: {experience_headroom} points remaining
+- Keyword Optimization: {keyword_headroom} points remaining
+- Achievements: {achievement_headroom} points remaining
+- Education: {education_headroom} points remaining
 
 ---
 
 ## DECISION PRIORITY (When Rules Conflict)
 
-When rules or objectives conflict, follow this priority order:
+Follow this priority order strictly:
 
-1. **Truthfulness** - NEVER violate (highest priority)
-2. **ATS Parseability** - Resume must be machine-readable
-3. **Keyword Matching** - Include required skills terminology
-4. **Match Score Optimization** - Improve content fit
-5. **Formatting Aesthetics** - Clean layout (lowest priority)
-
----
-
-## SCORING SYSTEMS
-
-### Match Score Calculation (0-100):
-
-**Allowed score movements:**
-- Skills Match: max 40 points TOTAL
-- Experience Relevance: max 30 points TOTAL
-- Keyword Optimization: max 15 points TOTAL
-- Achievements: max 10 points TOTAL
-- Education: max 5 points TOTAL
-
-**Current Category Scores:**
-- Skills Match: {skills_points}/40 (Headroom: {skills_headroom})
-- Keyword Optimization: {keyword_points}/15 (Headroom: {keyword_headroom})
-- Experience Relevance: {experience_points}/30 (Headroom: {experience_headroom})
-- Achievements: {achievement_points}/10 (Headroom: {achievement_headroom})
-- Education: {education_points}/5 (Headroom: {education_headroom})
-
-### ATS Score Calculation (0-100):
-
-**Formula:** (Keyword Match × 0.50) + (Formatting × 0.25) + (Sections × 0.15) + (Contact × 0.10)
-
-**Components:**
-1. **Keyword Matching (50% weight):** Percentage of job keywords found in resume
-2. **Formatting Quality (25% weight):** No tables, standard bullets only, simple layout
-3. **Required Sections (15% weight):** Must have Experience, Education, Skills sections
-4. **Contact Information (10% weight):** Email and phone number present
+| Priority | Rule | Override Allowed |
+|----------|------|------------------|
+| 1 | **TRUTHFULNESS** — Never fabricate | NEVER |
+| 2 | **ATS PARSEABILITY** — Must be machine-readable | Only for truthfulness |
+| 3 | **KEYWORD MATCHING** — Include required terminology | Only for 1-2 |
+| 4 | **MATCH SCORE** — Improve content fit | Only for 1-3 |
+| 5 | **AESTHETICS** — Clean formatting | Lowest priority |
 
 ---
 
-## MARGINAL GAIN AWARENESS (CRITICAL - Prevents Score Inflation)
+## MARGINAL GAIN RULES (CRITICAL FOR ACCURATE PROJECTIONS)
 
-**Follow these rules to avoid over-estimating improvements:**
+**These rules prevent over-estimation of improvements:**
 
-1. **Keyword Repetition:** Repeating a keyword already present ≥2 times yields ZERO ATS gain
-2. **Skill Double-Counting:** Adding a skill already counted elsewhere does NOT increase Skills Match points
-3. **Near-Ceiling Categories:** If category is within 2 points of ceiling, assume minimal or ZERO gain
-4. **Minimum Threshold:** Do not project improvements less than 1 point
-5. **Overlapping Improvements:** Skills that improve both Skills Match AND Keyword Optimization should count points in ONLY ONE category
+| Scenario | Projected Gain |
+|----------|----------------|
+| Keyword already present ≥2 times | **0 points** (no additional gain) |
+| Skill already counted in score | **0 points** (no double-counting) |
+| Category within 2 points of ceiling | **Assume 0-1 points max** |
+| Improvement would be <1 point | **Report as 0** |
+| Adding skill without usage context | **50% of normal points** |
 
-**Why this matters:** Without these rules, you will over-estimate improvements by 10-20 points.
+**Important**: If you cannot justify a gain with specific evidence, do not project it.
 
 ---
 
@@ -585,26 +706,40 @@ Now rewrite the resume following ALL instructions above. Ensure BOTH Match Score
             achievement_headroom = 10 - achievement_points
             education_headroom = 5 - education_points
 
-            # Format ATS analysis
+            # Format ATS analysis and extract components
             if ats_analysis:
                 ats_score = ats_analysis.get('ats_score', 0)
+                formatting_score = ats_analysis.get('formatting_score', 0)
+                section_score = ats_analysis.get('section_score', 0)
+                contact_score = ats_analysis.get('contact_score', 0)
+                keyword_match_percentage = ats_analysis.get('keyword_analysis', {}).get('match_percentage', 0)
+
+                # Format issues list
+                issues_list = ats_analysis.get('issues', [])
+                ats_issues = '\n'.join(f"- {issue}" for issue in issues_list[:10]) if issues_list else "No major issues detected"
+
                 ats_text = f"""
 **Current ATS Score:** {ats_score}/100
 
 **ATS Component Scores:**
-- Keyword Match: {ats_analysis.get('keyword_analysis', {}).get('match_percentage', 0)}%
-- Formatting: {ats_analysis.get('formatting_score', 0)}/100
-- Sections: {ats_analysis.get('section_score', 0)}/100
-- Contact Info: {ats_analysis.get('contact_score', 0)}/100
+- Keyword Match: {keyword_match_percentage}%
+- Formatting: {formatting_score}/100
+- Sections: {section_score}/100
+- Contact Info: {contact_score}/100
 
 **Issues Found:**
-{chr(10).join(f"- {issue}" for issue in ats_analysis.get('issues', [])[:10]) if ats_analysis.get('issues') else "No major issues"}
+{ats_issues}
 
 **Missing Keywords:**
 {', '.join(ats_analysis.get('keyword_analysis', {}).get('missing_keywords', [])[:15])}
 """
             else:
                 ats_score = 0
+                formatting_score = 0
+                section_score = 0
+                contact_score = 0
+                keyword_match_percentage = 0
+                ats_issues = "ATS analysis not performed"
                 ats_text = "ATS analysis not available"
 
             prompt = self.REWRITE_PROMPT.format(
@@ -613,6 +748,11 @@ Now rewrite the resume following ALL instructions above. Ensure BOTH Match Score
                 match_score=match_score,
                 score_breakdown=score_breakdown_text,
                 ats_score=ats_score,
+                formatting_score=formatting_score,
+                section_score=section_score,
+                contact_score=contact_score,
+                keyword_match_percentage=keyword_match_percentage,
+                ats_issues=ats_issues,
                 ats_analysis=ats_text,
                 recommendations=rec_text,
                 missing_skills=skills_text,
@@ -639,21 +779,43 @@ Now rewrite the resume following ALL instructions above. Ensure BOTH Match Score
             # Parse JSON response
             result = self._parse_response(response.content)
 
-            # Post-process: Remove any remaining tables (safety net)
+            # Post-process: Apply ATS safety transformations (safety net)
             if "improved_resume" in result:
                 original_resume = result["improved_resume"]
-                cleaned_resume = remove_tables_from_resume(original_resume)
+                processed_resume = original_resume
+                changes_made = []
 
-                if original_resume != cleaned_resume:
+                # 1. Remove tables
+                cleaned_resume = remove_tables_from_resume(processed_resume)
+                if cleaned_resume != processed_resume:
                     logger.info("Removed tables from improved resume (post-processing)")
-                    result["improved_resume"] = cleaned_resume
+                    changes_made.append("Removed table formatting for ATS compatibility")
+                    processed_resume = cleaned_resume
 
-                    # Add note about table removal
+                # 2. Normalize bullets
+                normalized_resume = normalize_bullets(processed_resume)
+                if normalized_resume != processed_resume:
+                    logger.info("Normalized bullet characters (post-processing)")
+                    changes_made.append("Standardized all bullets to • for ATS compatibility")
+                    processed_resume = normalized_resume
+
+                # 3. Fix line lengths
+                wrapped_resume = fix_line_lengths(processed_resume, max_length=100)
+                if wrapped_resume != processed_resume:
+                    logger.info("Wrapped long lines (post-processing)")
+                    changes_made.append("Wrapped lines exceeding 100 characters")
+                    processed_resume = wrapped_resume
+
+                # Update result if any changes were made
+                if changes_made:
+                    result["improved_resume"] = processed_resume
+
+                    # Add notes about post-processing
                     if "summary_of_changes" not in result:
                         result["summary_of_changes"] = []
-                    result["summary_of_changes"].append(
-                        "Post-processing: Removed table formatting for ATS compatibility"
-                    )
+
+                    for change in changes_made:
+                        result["summary_of_changes"].append(f"Post-processing: {change}")
 
             # Add metadata
             result["_metadata"] = {

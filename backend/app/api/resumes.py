@@ -31,27 +31,28 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-def _generate_validation_message(projected: float, actual: float, gap: float, actual_improvement: float) -> str:
+def _generate_validation_message(estimated: float, actual: float, gap: float, actual_improvement: float) -> str:
     """
     Generate a user-friendly validation message explaining score accuracy.
 
-    This helps build trust by being honest about projection accuracy.
+    This helps build trust by being honest about estimation accuracy.
+    Uses "estimated" instead of "projected" to set realistic expectations.
     """
     if gap <= 3:
-        return f"Projection accurate! Verified score: {actual:.0f}%"
+        return f"Estimate accurate! Verified score: {actual:.0f}%"
 
     if gap <= 5:
-        return f"Projection mostly accurate. Verified score: {actual:.0f}% (projected {projected:.0f}%)"
+        return f"Estimate mostly accurate. Verified score: {actual:.0f}% (estimated {estimated:.0f}%)"
 
     if gap <= 10:
         if actual_improvement > 0:
-            return f"Score improved to {actual:.0f}%, though less than projected ({projected:.0f}%). Existing keyword saturation limited gains."
+            return f"Score improved to {actual:.0f}%, though less than estimated ({estimated:.0f}%). Existing keyword saturation limited gains."
         else:
             return f"Score unchanged at {actual:.0f}%. Resume already well-optimized for this role; limited improvement possible."
 
     # Large gap (>10 points)
     if actual_improvement > 0:
-        return f"Score improved to {actual:.0f}%, but projection was optimistic. Skills added were already partially credited in original scoring."
+        return f"Score improved to {actual:.0f}%, but estimate was optimistic. Skills added were already partially credited in original scoring."
     else:
         return f"Score remains {actual:.0f}%. Most recommended skills were already present or inferred by the matcher. Focus on experience alignment and achievements."
 
@@ -417,12 +418,15 @@ async def rewrite_resume(
             ats_analysis=ats_analysis
         )
 
-        # POST-RESCAN VALIDATION: Verify actual vs projected scores
+        # POST-RESCAN VALIDATION: Verify actual vs estimated scores
         validation_data = None
+        ceiling_reached = False
+        ceiling_reasons = []
+
         try:
             improved_resume_text = result.get("improved_resume", "")
             if improved_resume_text:
-                logger.info("Running post-rescan validation to verify projected scores")
+                logger.info("Running post-rescan validation to verify estimated scores")
 
                 # Re-run matcher on improved resume
                 matcher = JobMatcher(llm_client)
@@ -433,21 +437,44 @@ async def rewrite_resume(
                 )
 
                 actual_new_score = rescan_result.get("match_score", match_score)
-                projected_score = result.get("final_scores", {}).get("match_score", {}).get("projected", match_score)
+                estimated_score = result.get("final_scores", {}).get("match_score", {}).get("projected", match_score)
 
                 # Calculate accuracy
-                accuracy_gap = abs(projected_score - actual_new_score)
+                accuracy_gap = abs(estimated_score - actual_new_score)
                 actual_improvement = actual_new_score - match_score
 
+                # Ceiling detection: if improvement ≤2 points, likely hit optimization ceiling
+                if actual_improvement <= 2:
+                    ceiling_reached = True
+
+                    # Analyze why ceiling was reached
+                    warnings = result.get("warnings", [])
+                    blockers = result.get("blockers", [])
+
+                    if blockers:
+                        ceiling_reasons.extend(blockers)
+
+                    if warnings:
+                        ceiling_reasons.extend(warnings)
+
+                    # Default reason if none specified
+                    if not ceiling_reasons:
+                        if actual_improvement > 0:
+                            ceiling_reasons.append("Skills already saturated - keywords present but not heavily weighted")
+                        else:
+                            ceiling_reasons.append("Resume already well-optimized for this role")
+
                 validation_data = {
-                    "projected_score": projected_score,
+                    "estimated_score": estimated_score,
                     "actual_score": actual_new_score,
-                    "projected_improvement": projected_score - match_score,
+                    "estimated_improvement": estimated_score - match_score,
                     "actual_improvement": actual_improvement,
                     "accuracy_gap": round(accuracy_gap, 1),
-                    "reliable": accuracy_gap <= 5,  # Within 5 points = good projection
+                    "reliable": accuracy_gap <= 5,  # Within 5 points = good estimate
+                    "ceiling_reached": ceiling_reached,
+                    "ceiling_reasons": ceiling_reasons,
                     "validation_message": _generate_validation_message(
-                        projected=projected_score,
+                        estimated=estimated_score,
                         actual=actual_new_score,
                         gap=accuracy_gap,
                         actual_improvement=actual_improvement
@@ -456,9 +483,10 @@ async def rewrite_resume(
 
                 logger.info(
                     "Post-rescan validation complete",
-                    projected=projected_score,
+                    estimated=estimated_score,
                     actual=actual_new_score,
                     gap=accuracy_gap,
+                    ceiling_reached=ceiling_reached,
                     reliable=validation_data["reliable"]
                 )
 
@@ -479,7 +507,7 @@ async def rewrite_resume(
                 for change in result.get("changes_made", [])
             ]
 
-        # Use validated score if available, otherwise use projected
+        # Use validated score if available, otherwise use estimated score from LLM
         final_score = match_score_data.get("projected", result.get("projected_total_score", match_score))
         final_improvement = match_score_data.get("improvement", result.get("projected_improvement", 0))
 
@@ -494,15 +522,17 @@ async def rewrite_resume(
             "original_score": match_score,
             "improved_resume": result.get("improved_resume", ""),
             "changes_summary": changes_summary,
-            "estimated_new_score": final_score,  # Use validated score
-            "score_improvement": final_improvement,  # Use validated improvement
+            "estimated_new_score": final_score,  # Use validated score (actual) if available
+            "score_improvement": final_improvement,  # Use validated improvement (actual) if available
             "key_improvements": changes_summary[:5],  # Top 5 changes
             # v2 specific fields
             "ats_score_original": ats_score_data.get("original"),
-            "ats_score_projected": ats_score_data.get("projected"),
+            "ats_score_estimated": ats_score_data.get("projected"),  # Uses "estimated" terminology
             "ats_score_improvement": ats_score_data.get("improvement"),
             "warnings": result.get("warnings", []),
             "blockers": result.get("blockers", []),
+            "ceiling_reached": ceiling_reached,  # GPT recommendation: helps prevent retry-spamming
+            "ceiling_reasons": ceiling_reasons if ceiling_reached else [],
             "hallucination_risk": result.get("hallucination_risk"),
             "confidence": result.get("confidence"),
             "confidence_notes": result.get("confidence_notes"),
