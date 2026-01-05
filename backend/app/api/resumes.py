@@ -20,6 +20,7 @@ from app.services.resume_parser import ResumeParser, ResumeAnalyzer, ResumeParse
 from app.services.resume_rewriter import ResumeRewriter
 from app.services.resume_rewriter_v2 import ResumeRewriterV2
 from app.services.ats_analyzer import ATSAnalyzer
+from app.services.job_matcher import JobMatcher
 from app.services.resume_generator import ResumeGenerator
 from app.services.interview_generator import InterviewGenerator
 from app.services.cover_letter_generator import CoverLetterGenerator
@@ -28,6 +29,31 @@ from app.core.logging_config import get_logger
 
 router = APIRouter()
 logger = get_logger(__name__)
+
+
+def _generate_validation_message(projected: float, actual: float, gap: float, actual_improvement: float) -> str:
+    """
+    Generate a user-friendly validation message explaining score accuracy.
+
+    This helps build trust by being honest about projection accuracy.
+    """
+    if gap <= 3:
+        return f"Projection accurate! Verified score: {actual:.0f}%"
+
+    if gap <= 5:
+        return f"Projection mostly accurate. Verified score: {actual:.0f}% (projected {projected:.0f}%)"
+
+    if gap <= 10:
+        if actual_improvement > 0:
+            return f"Score improved to {actual:.0f}%, though less than projected ({projected:.0f}%). Existing keyword saturation limited gains."
+        else:
+            return f"Score unchanged at {actual:.0f}%. Resume already well-optimized for this role; limited improvement possible."
+
+    # Large gap (>10 points)
+    if actual_improvement > 0:
+        return f"Score improved to {actual:.0f}%, but projection was optimistic. Skills added were already partially credited in original scoring."
+    else:
+        return f"Score remains {actual:.0f}%. Most recommended skills were already present or inferred by the matcher. Focus on experience alignment and achievements."
 
 
 # Schema for improved resume download
@@ -391,6 +417,54 @@ async def rewrite_resume(
             ats_analysis=ats_analysis
         )
 
+        # POST-RESCAN VALIDATION: Verify actual vs projected scores
+        validation_data = None
+        try:
+            improved_resume_text = result.get("improved_resume", "")
+            if improved_resume_text:
+                logger.info("Running post-rescan validation to verify projected scores")
+
+                # Re-run matcher on improved resume
+                matcher = JobMatcher(llm_client)
+                rescan_result = await matcher.match(
+                    resume_text=improved_resume_text,
+                    job_description=job.description,
+                    detailed=True
+                )
+
+                actual_new_score = rescan_result.get("match_score", match_score)
+                projected_score = result.get("final_scores", {}).get("match_score", {}).get("projected", match_score)
+
+                # Calculate accuracy
+                accuracy_gap = abs(projected_score - actual_new_score)
+                actual_improvement = actual_new_score - match_score
+
+                validation_data = {
+                    "projected_score": projected_score,
+                    "actual_score": actual_new_score,
+                    "projected_improvement": projected_score - match_score,
+                    "actual_improvement": actual_improvement,
+                    "accuracy_gap": round(accuracy_gap, 1),
+                    "reliable": accuracy_gap <= 5,  # Within 5 points = good projection
+                    "validation_message": _generate_validation_message(
+                        projected=projected_score,
+                        actual=actual_new_score,
+                        gap=accuracy_gap,
+                        actual_improvement=actual_improvement
+                    )
+                }
+
+                logger.info(
+                    "Post-rescan validation complete",
+                    projected=projected_score,
+                    actual=actual_new_score,
+                    gap=accuracy_gap,
+                    reliable=validation_data["reliable"]
+                )
+
+        except Exception as e:
+            logger.warning("Post-rescan validation failed, continuing without it", error=str(e))
+
         # Map field names to match frontend expectations (supporting both v1 and v2 output)
         final_scores = result.get("final_scores", {})
         match_score_data = final_scores.get("match_score", {})
@@ -405,6 +479,14 @@ async def rewrite_resume(
                 for change in result.get("changes_made", [])
             ]
 
+        # Use validated score if available, otherwise use projected
+        final_score = match_score_data.get("projected", result.get("projected_total_score", match_score))
+        final_improvement = match_score_data.get("improvement", result.get("projected_improvement", 0))
+
+        if validation_data:
+            final_score = validation_data["actual_score"]
+            final_improvement = validation_data["actual_improvement"]
+
         response_data = {
             "resume_id": resume_id,
             "job_id": job_id,
@@ -412,8 +494,8 @@ async def rewrite_resume(
             "original_score": match_score,
             "improved_resume": result.get("improved_resume", ""),
             "changes_summary": changes_summary,
-            "estimated_new_score": match_score_data.get("projected", result.get("projected_total_score", match_score)),
-            "score_improvement": match_score_data.get("improvement", result.get("projected_improvement", 0)),
+            "estimated_new_score": final_score,  # Use validated score
+            "score_improvement": final_improvement,  # Use validated improvement
             "key_improvements": changes_summary[:5],  # Top 5 changes
             # v2 specific fields
             "ats_score_original": ats_score_data.get("original"),
@@ -424,6 +506,8 @@ async def rewrite_resume(
             "hallucination_risk": result.get("hallucination_risk"),
             "confidence": result.get("confidence"),
             "confidence_notes": result.get("confidence_notes"),
+            # Post-rescan validation data (NEW)
+            "validation": validation_data,
             # Include all original data for reference
             "_raw_response": result
         }

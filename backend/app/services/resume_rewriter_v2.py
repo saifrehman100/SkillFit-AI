@@ -4,10 +4,48 @@ Uses LLMs to rewrite resumes based on match recommendations and job requirements
 """
 from typing import Dict, Any, Optional, List
 import json
+import re
 
 from app.core.logging_config import get_logger
 
 logger = get_logger(__name__)
+
+
+def remove_tables_from_resume(resume_text: str) -> str:
+    """
+    Remove ASCII tables and pipe-separated layouts from resume text.
+
+    This is a safety net to ensure LLM-generated resumes are ATS-friendly
+    even if the prompt instructions weren't perfectly followed.
+
+    Args:
+        resume_text: Resume text potentially containing tables
+
+    Returns:
+        Cleaned resume text without tables
+    """
+    lines = resume_text.split('\n')
+    cleaned_lines = []
+
+    for line in lines:
+        # Skip lines that are table borders (mostly +, -, =, | characters)
+        if re.match(r'^[\s|+\-=]{4,}$', line):
+            continue
+
+        # Skip lines with 3+ pipe separators (likely table rows)
+        # Allow lines with 1-2 pipes (could be: "Email: x@y.com | Phone: 123")
+        if line.count('|') >= 3:
+            continue
+
+        cleaned_lines.append(line)
+
+    # Final safety check: if many pipes remain, log warning
+    final_text = '\n'.join(cleaned_lines)
+    pipe_count = final_text.count('|')
+    if pipe_count > 10:
+        logger.warning(f"Resume still contains {pipe_count} pipe characters after table removal")
+
+    return final_text
 
 
 class ResumeRewriterV2:
@@ -601,13 +639,30 @@ Now rewrite the resume following ALL instructions above. Ensure BOTH Match Score
             # Parse JSON response
             result = self._parse_response(response.content)
 
+            # Post-process: Remove any remaining tables (safety net)
+            if "improved_resume" in result:
+                original_resume = result["improved_resume"]
+                cleaned_resume = remove_tables_from_resume(original_resume)
+
+                if original_resume != cleaned_resume:
+                    logger.info("Removed tables from improved resume (post-processing)")
+                    result["improved_resume"] = cleaned_resume
+
+                    # Add note about table removal
+                    if "summary_of_changes" not in result:
+                        result["summary_of_changes"] = []
+                    result["summary_of_changes"].append(
+                        "Post-processing: Removed table formatting for ATS compatibility"
+                    )
+
             # Add metadata
             result["_metadata"] = {
                 "model": response.model,
                 "provider": response.provider,
                 "tokens_used": response.tokens_used,
                 "cost_estimate": response.cost_estimate,
-                "version": "v2"
+                "version": "v2",
+                "post_processed": True
             }
 
             return result
