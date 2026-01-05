@@ -11,7 +11,7 @@ export const dashboardTourSteps: Step[] = [
     content: (
       <div>
         <h2 className="text-xl font-bold mb-2">Welcome to SkillFit AI! 🎉</h2>
-        <p>Let's take a quick tour to help you get started. This will only take a minute!</p>
+        <p>Let&apos;s take a quick tour to help you get started. This will only take a minute!</p>
       </div>
     ),
     placement: 'center',
@@ -22,7 +22,7 @@ export const dashboardTourSteps: Step[] = [
     content: (
       <div>
         <h3 className="font-semibold mb-2">Upload Your Resume</h3>
-        <p>Start by uploading your resume in PDF, DOCX, or TXT format. We'll analyze it and extract your skills, experience, and qualifications.</p>
+        <p>Start by uploading your resume in PDF, DOCX, or TXT format. We&apos;ll analyze it and extract your skills, experience, and qualifications.</p>
       </div>
     ),
     placement: 'bottom',
@@ -32,7 +32,7 @@ export const dashboardTourSteps: Step[] = [
     content: (
       <div>
         <h3 className="font-semibold mb-2">Add Job Postings</h3>
-        <p>Copy and paste job descriptions you're interested in. Our AI will analyze the requirements and keywords.</p>
+        <p>Copy and paste job descriptions you&apos;re interested in. Our AI will analyze the requirements and keywords.</p>
       </div>
     ),
     placement: 'bottom',
@@ -68,7 +68,7 @@ export const dashboardTourSteps: Step[] = [
     content: (
       <div>
         <h3 className="font-semibold mb-2">Your Job Postings</h3>
-        <p>Track all the jobs you're interested in. Each job can be matched against multiple resumes.</p>
+        <p>Track all the jobs you&apos;re interested in. Each job can be matched against multiple resumes.</p>
       </div>
     ),
     placement: 'top',
@@ -97,9 +97,9 @@ export const dashboardTourSteps: Step[] = [
     target: 'body',
     content: (
       <div>
-        <h2 className="text-xl font-bold mb-2">You're All Set! 🚀</h2>
-        <p className="mb-2">You're ready to start optimizing your job applications with AI.</p>
-        <p className="text-sm text-gray-600">Pro tip: Start by uploading a resume, then add a job you're interested in!</p>
+        <h2 className="text-xl font-bold mb-2">You&apos;re All Set! 🚀</h2>
+        <p className="mb-2">You&apos;re ready to start optimizing your job applications with AI.</p>
+        <p className="text-sm text-gray-600">Pro tip: Start by uploading a resume, then add a job you&apos;re interested in!</p>
       </div>
     ),
     placement: 'center',
