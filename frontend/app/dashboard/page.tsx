@@ -14,7 +14,7 @@ import { useApplications } from '@/lib/hooks/useApplications';
 import { formatDate } from '@/lib/utils';
 import { dashboardTourSteps, tourStyles } from '@/lib/tour-steps';
 import { useAuth } from '@/contexts/AuthContext';
-import { apiClient } from '@/lib/api-client';
+import { authAPI } from '@/lib/api/auth';
 
 export default function DashboardPage() {
   const { user, refreshUser } = useAuth();
@@ -45,7 +45,7 @@ export default function DashboardPage() {
 
       // Mark tour as completed in backend
       try {
-        await apiClient.post('/auth/tour/complete');
+        await authAPI.completeTour();
         // Refresh user data to update tour_completed status
         await refreshUser();
       } catch (error) {

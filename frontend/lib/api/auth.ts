@@ -90,4 +90,8 @@ export const authAPI = {
   // Get Pricing Info
   getPricing: () =>
     apiClient.get('/auth/pricing'),
+
+  // Complete Onboarding Tour
+  completeTour: () =>
+    apiClient.post<{ message: string; tour_completed: boolean }>('/auth/tour/complete'),
 };
