@@ -574,3 +574,22 @@ async def get_pricing():
         ],
         "message": "Pro plan coming soon! Express your interest to get notified."
     }
+
+
+@router.post("/tour/complete")
+async def complete_tour(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Mark the onboarding tour as completed for the current user.
+    Called when user finishes the guided walkthrough.
+    """
+    current_user.tour_completed = True
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "message": "Tour marked as completed",
+        "tour_completed": True
+    }

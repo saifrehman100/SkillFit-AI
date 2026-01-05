@@ -28,6 +28,7 @@ class UserResponse(BaseModel):
     llm_model: Optional[str] = None
     plan: str = "free"
     matches_used: int = 0
+    tour_completed: bool = False
 
     class Config:
         from_attributes = True

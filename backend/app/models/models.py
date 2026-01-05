@@ -54,6 +54,9 @@ class User(Base):
     stripe_customer_id = Column(String(255), nullable=True)  # For future Stripe integration
     stripe_subscription_id = Column(String(255), nullable=True)
 
+    # Onboarding
+    tour_completed = Column(Boolean, default=False, nullable=False)  # Track if user has seen walkthrough
+
     # Relationships
     resumes = relationship("Resume", back_populates="user", cascade="all, delete-orphan")
     jobs = relationship("Job", back_populates="user", cascade="all, delete-orphan")
