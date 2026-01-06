@@ -340,13 +340,67 @@ Degree, Major | University | Year
 
 ### TIER 2: HIGH ROI (Optimize After Tier 1)
 
-**5. USE EXACT JOB TERMINOLOGY**
+**5. AGGRESSIVE KEYWORD OPTIMIZATION (Target: 50-70% Keyword Match)**
 
-- Replace synonyms with exact phrases from job description
-- Example: Job says "microservices architecture" → Use "microservices architecture", NOT "distributed systems"
-- Example: Job says "customer success" → Use "customer success", NOT "client relations"
+**CRITICAL GOAL**: Achieve 50-70% keyword match rate, NOT 26%
 
-**This improves both Keyword Optimization (Match) and Keyword Matching (ATS)**
+**Step 1: Extract ALL keywords from job description**
+- Technical acronyms (SDS, CI/CD, ETL, API, etc.)
+- Product/tool names (Azure Databricks, Kafka, Spring Framework, etc.)
+- Methodology terms (Agile, Scrum, Kanban, DevOps, etc.)
+- Domain-specific terms (Fraud, Compliance, Solution Design, etc.)
+- Exact phrases (e.g., "Solution Design within SDS")
+
+**Step 2: For EACH extracted keyword, apply these rules:**
+
+| Scenario | Action | Example |
+|----------|--------|---------|
+| Job has acronym + Resume has related work | ADD acronym with context | Job: "SDS" + Resume: "solution design" → ADD: "Solution Design (SDS)" or "SDS methodology" |
+| Job has exact term + Resume has synonym | REPLACE with exact term | Job: "CI/CD pipelines" + Resume: "automated deployments" → USE: "CI/CD pipelines" |
+| Job has product name + Resume uses it | ADD exact product name | Job: "Azure Databricks" + Resume: "data processing" → ADD: "Azure Databricks" if they used it |
+| Keyword is completely unrelated | Skip and note in warnings | Job: "Blockchain" + Resume: no crypto work → SKIP |
+
+**Step 3: Keyword Injection Rules (Truthful but Aggressive)**
+
+✅ **ALLOWED** - Add keyword when related experience exists:
+```
+Job requires: "Solution Design within SDS"
+Resume shows: "Developed detailed solution architectures"
+
+✅ ADD: "Developed detailed solution architectures following SDS methodology"
+✅ ADD: "Solution Design (SDS)" to skills section
+```
+
+✅ **ALLOWED** - Use exact terminology even if synonym exists:
+```
+Job says: "Agile/Scrum"
+Resume says: "iterative development with sprint planning"
+
+✅ REPLACE: "Agile/Scrum development with sprint planning and retrospectives"
+```
+
+✅ **ALLOWED** - Add common industry acronyms in context:
+```
+Job says: "ETL pipelines"
+Resume shows: "data extraction and transformation"
+
+✅ ADD: "Built ETL (Extract, Transform, Load) pipelines for data processing"
+```
+
+❌ **FORBIDDEN** - Do NOT add without ANY related experience:
+```
+Job says: "Blockchain development"
+Resume shows: only web development work
+
+❌ DO NOT ADD blockchain if no crypto/distributed ledger work exists
+```
+
+**Step 4: Verification**
+- Count how many job keywords appear in improved resume
+- Target: 50-70% of job keywords present
+- If <50%, revisit and add more contextual keyword injections
+
+**This is the #1 way to improve ATS scores from 26% → 60%+ keyword match**
 
 **6. QUANTIFY ACHIEVEMENTS (Anti-Hallucination Rules)**
 
@@ -377,12 +431,17 @@ If missing, add 3-4 line summary at the top highlighting:
 
 ### TIER 3: POLISH (If Time/Tokens Allow)
 
-**8. OPTIMIZE KEYWORD DENSITY**
+**8. KEYWORD PLACEMENT & DENSITY**
 
-- Use job keywords 2-3 times across different sections
-- Place critical keywords in: Summary, Skills, and Experience
-- Don't keyword stuff (no keyword should appear >3 times total)
-- Vary phrasing naturally
+After adding keywords from #5, ensure proper distribution:
+
+- **Summary**: Include 3-5 top keywords from job (SDS, Azure, Agile, etc.)
+- **Skills Section**: List ALL matched keywords explicitly
+- **Experience**: Use keywords in context 2-3 times across bullets
+- **Don't overdo it**: Max 3 mentions per keyword total
+- **Natural phrasing**: "Built ETL pipelines using Azure Databricks" (not "ETL ETL ETL")
+
+**If keyword match is still <50% after this step, revisit #5 and add more keywords with context**
 
 **9. RESTRUCTURE FOR RELEVANCE**
 
@@ -430,6 +489,7 @@ Before returning JSON, verify ALL of these:
 □ Section headers match required names
 □ Line lengths ≤100 characters (target)
 □ Every skill in Skills section appears in Experience demonstrating usage
+□ **KEYWORD MATCH ≥50%** - Count job keywords in improved resume, target 50-70%
 
 ---
 
@@ -502,7 +562,9 @@ Return valid JSON with this EXACT structure:
             "projected_percentage": <number 0-100>,
             "improvement": <number>,
             "keywords_added_count": <number>,
-            "top_keywords_added": ["keyword1", "keyword2", "keyword3"]
+            "top_keywords_added": ["keyword1", "keyword2", "keyword3"],
+            "target_achieved": <true if projected_percentage >= 50, else false>,
+            "note": "Target: 50-70% keyword match for good ATS performance"
         }}
     }},
 
