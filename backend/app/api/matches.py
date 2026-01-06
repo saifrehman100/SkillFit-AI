@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.api.schemas import MatchRequest, BatchMatchRequest, MatchResponse
-from app.core.auth import get_current_user, get_user_llm_api_key
+from app.core.auth import get_current_user, get_user_llm_api_key, create_smart_llm_client
 from app.core.config import settings
 from app.core.llm_providers import LLMFactory
 from app.models.database import get_db
@@ -93,33 +93,32 @@ async def create_match(
             detail="Job not found"
         )
 
-    # Get LLM client - Priority: request > user preference > system default
-    provider = (
-        match_request.llm_provider or
-        current_user.llm_provider or
-        settings.default_llm_provider
-    )
-    model = (
-        match_request.llm_model or
-        current_user.llm_model or
-        settings.default_model_name
-    )
-    api_key = get_user_llm_api_key(current_user, provider)
+    # Get LLM client with smart routing
+    # Job matching/ATS scoring is a SIMPLE task -> uses nano for OpenAI (cheaper)
+    # If user specified a specific provider/model in request, respect that
+    if match_request.llm_provider or match_request.llm_model:
+        # User has specific preference in request - use it directly
+        provider = match_request.llm_provider or current_user.llm_provider or settings.default_llm_provider
+        model = match_request.llm_model or current_user.llm_model or settings.default_model_name
+        api_key = get_user_llm_api_key(current_user, provider)
 
-    if not api_key:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"No API key configured for provider: {provider}"
-        )
+        if not api_key:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"No API key configured for provider: {provider}"
+            )
 
-    try:
         llm_client = LLMFactory.create_client(
             provider=provider,
             api_key=api_key,
             model=model
         )
+    else:
+        # Use smart routing - matching is a simple task
+        llm_client = create_smart_llm_client(current_user, "simple")
 
-        # Perform matching
+    try:
+        # Perform matching using nano (simple task: scoring, extraction)
         matcher = JobMatcher(llm_client)
         job_text = f"{job.description}\n\n{job.requirements or ''}"
 

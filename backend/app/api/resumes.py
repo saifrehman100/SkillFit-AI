@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status,
 from sqlalchemy.orm import Session
 
 from app.api.schemas import ResumeResponse, ResumeUpload
-from app.core.auth import get_current_user, get_user_llm_api_key
+from app.core.auth import get_current_user, get_user_llm_api_key, create_smart_llm_client
 from app.core.config import settings
 from app.core.llm_providers import LLMFactory
 from app.core.storage import get_storage_client
@@ -150,12 +150,8 @@ async def upload_resume(
     # Analyze with LLM if requested
     if analyze:
         try:
-            api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
-            llm_client = LLMFactory.create_client(
-                provider=settings.default_llm_provider,
-                api_key=api_key,
-                model=settings.default_model_name
-            )
+            # Resume analysis is a SIMPLE task (extraction) -> uses nano for OpenAI
+            llm_client = create_smart_llm_client(current_user, "simple")
 
             analyzer = ResumeAnalyzer(llm_client)
             analysis = await analyzer.analyze(text)
@@ -386,18 +382,17 @@ async def rewrite_resume(
         }
 
     try:
-        # Get LLM client
-        api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
-        llm_client = LLMFactory.create_client(
-            provider=settings.default_llm_provider,
-            api_key=api_key,
-            model=settings.default_model_name
-        )
+        # Get LLM clients with smart routing
+        # ATS analysis: SIMPLE task -> uses nano (cheaper, faster)
+        ats_client = create_smart_llm_client(current_user, "simple")
 
-        # Run ATS analysis for v2 rewriter
+        # Resume rewriting: COMPLEX task -> uses mini (better reasoning)
+        rewrite_client = create_smart_llm_client(current_user, "complex")
+
+        # Run ATS analysis for v2 rewriter using nano (simple task)
         ats_analysis = None
         try:
-            ats_analyzer = ATSAnalyzer(llm_client)
+            ats_analyzer = ATSAnalyzer(ats_client)
             ats_analysis = ats_analyzer.analyze_ats_score(
                 resume_text=resume.raw_text,
                 job_description=job.description
@@ -406,8 +401,8 @@ async def rewrite_resume(
         except Exception as e:
             logger.warning("ATS analysis failed for resume rewrite, continuing without it", error=str(e))
 
-        # Use v2 rewriter with ATS optimization
-        rewriter = ResumeRewriterV2(llm_client)
+        # Use v2 rewriter with ATS optimization using mini (complex task)
+        rewriter = ResumeRewriterV2(rewrite_client)
         result = await rewriter.rewrite_resume(
             resume_text=resume.raw_text,
             job_description=job.description,
