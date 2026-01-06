@@ -1,6 +1,7 @@
 'use client';
 
-import { Search } from 'lucide-react';
+import { Search, Settings } from 'lucide-react';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -43,10 +44,7 @@ export function Header() {
         {/* User menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button
-              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-              data-tour="user-menu"
-            >
+            <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <Avatar>
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
@@ -59,6 +57,13 @@ export function Header() {
                 <p className="text-xs text-muted-foreground">Free Plan</p>
               </div>
             </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <Link href="/dashboard/settings">
+              <DropdownMenuItem data-tour="settings-menu">
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </DropdownMenuItem>
+            </Link>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout}>
               Log out

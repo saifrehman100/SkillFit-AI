@@ -84,14 +84,15 @@ export const dashboardTourSteps: Step[] = [
     placement: 'top',
   },
   {
-    target: '[data-tour="user-menu"]',
+    target: '[data-tour="settings-menu"]',
     content: (
       <div>
         <h3 className="font-semibold mb-2">Settings & Account</h3>
-        <p>Access your API key, LLM preferences, usage statistics, and account settings from here.</p>
+        <p>Click on your name, then access Settings to customize your LLM preferences, view usage statistics, and manage your account.</p>
       </div>
     ),
-    placement: 'bottom',
+    placement: 'right',
+    disableBeacon: true,
   },
   {
     target: 'body',
