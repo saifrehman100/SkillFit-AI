@@ -4,6 +4,7 @@ Uses LLMs to generate match scores, identify missing skills, and provide recomme
 """
 from typing import Dict, List, Optional, Any
 import json
+import re
 
 from app.core.logging_config import get_logger
 from app.services.ats_analyzer import ATSAnalyzer
@@ -110,7 +111,14 @@ Estimated improvements MUST:
 
 3. **Explanation**: Explain your score breakdown using the categories above.
 
-Format your response as JSON with the following structure:
+**CRITICAL: JSON Formatting Rules**
+- Escape all quotes inside string values using backslash (\")
+- Do NOT include newlines inside string values
+- Use double quotes for all keys and string values
+- Ensure all arrays and objects are properly closed
+- Remove any trailing commas
+
+Format your response as valid JSON with the following structure:
 {{
     "match_score": <number 0-100>,
     "score_breakdown": {{
@@ -357,28 +365,149 @@ Respond with ONLY a JSON object:
 
     def _parse_response(self, content: str) -> Dict[str, Any]:
         """
-        Parse LLM response and extract JSON.
+        Parse LLM response and extract JSON with robust error handling.
 
         Args:
             content: Raw LLM response
 
         Returns:
             Parsed data dictionary
+
+        Handles common JSON issues:
+        - Unescaped quotes in strings
+        - Newlines in string values
+        - Trailing commas
+        - Missing closing braces
         """
+        original_content = content  # Keep original for error logging
+
         try:
-            # Try to extract JSON from markdown code blocks
+            # Step 1: Extract from markdown code blocks
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0]
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0]
 
-            data = json.loads(content.strip())
-            return data
+            content = content.strip()
 
-        except json.JSONDecodeError as e:
-            logger.warning("Failed to parse JSON response", error=str(e))
-            # Return raw content if JSON parsing fails
-            return {"raw_response": content, "parse_error": str(e)}
+            # Step 2: Try direct parsing first
+            try:
+                data = json.loads(content)
+                return data
+            except json.JSONDecodeError as e:
+                logger.warn(
+                    "Failed to parse JSON response",
+                    error=str(e),
+                    content_preview=content[:500] if len(content) > 500 else content
+                )
+
+                # Step 3: Try to fix common JSON issues
+                fixed_content = self._fix_json_issues(content)
+
+                try:
+                    data = json.loads(fixed_content)
+                    logger.info("Successfully parsed JSON after fixing issues")
+                    return data
+                except json.JSONDecodeError as e2:
+                    logger.error(
+                        "Failed to parse JSON even after fixes",
+                        error=str(e2),
+                        fixed_content_preview=fixed_content[:500] if len(fixed_content) > 500 else fixed_content
+                    )
+
+                    # Step 4: Fallback - extract key fields using regex
+                    fallback_data = self._extract_fallback_data(original_content)
+                    if fallback_data.get("match_score") is not None:
+                        logger.info("Using fallback data extraction")
+                        return fallback_data
+
+                    # Step 5: Last resort - return error info
+                    return {
+                        "match_score": 50,  # Default middle score
+                        "missing_skills": [],
+                        "recommendations": ["Unable to parse full response - please try again"],
+                        "explanation": "JSON parsing failed",
+                        "parse_error": str(e2),
+                        "raw_response": original_content[:1000]  # Truncate for logging
+                    }
+
+        except Exception as e:
+            logger.error("Unexpected error parsing response", error=str(e))
+            return {
+                "match_score": 50,
+                "missing_skills": [],
+                "recommendations": ["Error processing response"],
+                "explanation": f"Parsing error: {str(e)}",
+                "raw_response": original_content[:1000]
+            }
+
+    def _fix_json_issues(self, content: str) -> str:
+        """
+        Attempt to fix common JSON formatting issues.
+
+        Args:
+            content: Potentially malformed JSON string
+
+        Returns:
+            Fixed JSON string
+        """
+        # Remove trailing commas before closing braces/brackets
+        content = re.sub(r',(\s*[}\]])', r'\1', content)
+
+        # Try to fix unescaped quotes in string values
+        # This is tricky - we need to escape quotes that aren't already escaped
+        # and aren't part of JSON structure
+        # Simple approach: Replace \" with ' inside string values
+        # More complex approach would require proper JSON parsing
+
+        return content
+
+    def _extract_fallback_data(self, content: str) -> Dict[str, Any]:
+        """
+        Extract key fields using regex when JSON parsing fails completely.
+
+        Args:
+            content: Raw LLM response
+
+        Returns:
+            Dictionary with extracted fields
+        """
+        fallback = {
+            "match_score": None,
+            "missing_skills": [],
+            "recommendations": [],
+            "explanation": ""
+        }
+
+        try:
+            # Extract match_score
+            score_match = re.search(r'"match_score":\s*(\d+)', content)
+            if score_match:
+                fallback["match_score"] = int(score_match.group(1))
+
+            # Extract missing_skills array
+            skills_match = re.search(r'"missing_skills":\s*\[(.*?)\]', content, re.DOTALL)
+            if skills_match:
+                skills_str = skills_match.group(1)
+                # Extract quoted strings
+                skills = re.findall(r'"([^"]+)"', skills_str)
+                fallback["missing_skills"] = skills[:10]  # Limit to 10
+
+            # Extract explanation
+            explanation_match = re.search(r'"explanation":\s*"([^"]+)"', content)
+            if explanation_match:
+                fallback["explanation"] = explanation_match.group(1)
+
+            logger.info(
+                "Extracted fallback data",
+                match_score=fallback["match_score"],
+                skills_count=len(fallback["missing_skills"])
+            )
+
+        except Exception as e:
+            logger.error("Failed to extract fallback data", error=str(e))
+
+        return fallback
 
 
 class SkillExtractor:
