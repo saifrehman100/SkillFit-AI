@@ -340,16 +340,23 @@ Degree, Major | University | Year
 
 ### TIER 2: HIGH ROI (Optimize After Tier 1)
 
-**5. AGGRESSIVE KEYWORD OPTIMIZATION (Target: 50-70% Keyword Match)**
+**5. AGGRESSIVE KEYWORD OPTIMIZATION ⚠️ THIS IS 50% OF ATS SCORE - HIGHEST PRIORITY! ⚠️**
 
-**CRITICAL GOAL**: Achieve 50-70% keyword match rate, NOT 26%
+**❗❗❗ CRITICAL GOAL ❗❗❗**: Achieve **65-75% keyword match rate** (NOT 26%, NOT 40%, NOT "good enough"!)
 
-**Step 1: Extract ALL keywords from job description**
-- Technical acronyms (SDS, CI/CD, ETL, API, etc.)
-- Product/tool names (Azure Databricks, Kafka, Spring Framework, etc.)
-- Methodology terms (Agile, Scrum, Kanban, DevOps, etc.)
-- Domain-specific terms (Fraud, Compliance, Solution Design, etc.)
-- Exact phrases (e.g., "Solution Design within SDS")
+**WHY THIS IS CRITICAL:**
+- Keywords account for **50%** of the total ATS score
+- Current keyword match of 28% = only 14/50 ATS points
+- Target keyword match of 70% = 35/50 ATS points
+- **This single factor can change ATS score from 56% to 80%!**
+
+**Step 1: Extract ALL keywords from job description** (Target: 50-70 keywords total)
+- Technical acronyms (SDS, CI/CD, ETL, API, REST, JSON, YAML, etc.)
+- Product/tool names (Azure Databricks, Kafka, Spring Framework, Jenkins, etc.)
+- Methodology terms (Agile, Scrum, Kanban, DevOps, TDD, BDD, etc.)
+- Domain-specific terms (Fraud Detection, Compliance, Solution Design, etc.)
+- Exact phrases from job (e.g., "Solution Design within SDS", "microservices architecture")
+- Action verbs (design, develop, implement, optimize, debug, deploy, etc.)
 
 **Step 2: For EACH extracted keyword, apply these rules:**
 
@@ -441,7 +448,11 @@ After adding keywords from #5, ensure proper distribution:
 - **Don't overdo it**: Max 3 mentions per keyword total
 - **Natural phrasing**: "Built ETL pipelines using Azure Databricks" (not "ETL ETL ETL")
 
-**If keyword match is still <50% after this step, revisit #5 and add more keywords with context**
+**❗ MANDATORY VERIFICATION ❗: After completing the resume:**
+1. Count how many job keywords appear in your improved resume
+2. Calculate: (matched keywords / total job keywords) × 100
+3. **If < 65%, you FAILED this task** - go back and add 10-15 more keywords with natural context
+4. **Target: 65-75% keyword match** (not 50%, not "good enough")
 
 **9. RESTRUCTURE FOR RELEVANCE**
 
@@ -489,7 +500,11 @@ Before returning JSON, verify ALL of these:
 □ Section headers match required names
 □ Line lengths ≤100 characters (target)
 □ Every skill in Skills section appears in Experience demonstrating usage
-□ **KEYWORD MATCH ≥50%** - Count job keywords in improved resume, target 50-70%
+□ **❗KEYWORD MATCH ≥65%❗** - THIS IS MANDATORY! Count job keywords in improved resume
+  - Extract 50-70 keywords from job description
+  - Count how many appear in improved resume
+  - Must achieve 65-75% match (NOT 40%, NOT 50%)
+  - If below 65%, ADD MORE KEYWORDS with natural context!
 
 ---
 
@@ -583,10 +598,12 @@ Return valid JSON with this EXACT structure:
             "original_percentage": <number 0-100>,
             "projected_percentage": <number 0-100>,
             "improvement": <number>,
+            "total_job_keywords_extracted": <number 50-70>,
+            "keywords_matched_in_resume": <number>,
             "keywords_added_count": <number>,
             "top_keywords_added": ["keyword1", "keyword2", "keyword3"],
-            "target_achieved": <true if projected_percentage >= 50, else false>,
-            "note": "Target: 50-70% keyword match for good ATS performance"
+            "target_achieved": <true if projected_percentage >= 65, else false>,
+            "note": "MANDATORY TARGET: 65-75% keyword match. If below 65%, this is a FAILED attempt."
         }}
     }},
 
