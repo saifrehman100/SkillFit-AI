@@ -495,11 +495,33 @@ Before returning JSON, verify ALL of these:
 
 ## OUTPUT FORMAT
 
+**CRITICAL: The improved_resume field MUST contain the FULL resume text as a string, NOT a JSON object!**
+
+**EXAMPLE OF CORRECT FORMAT:**
+```json
+{{
+    "improved_resume": "JOHN DOE\\nEmail: john@example.com | Phone: (555) 123-4567\\n\\nPROFESSIONAL SUMMARY\\nSoftware engineer with 5+ years...\\n\\nSKILLS\\n• Python\\n• Docker\\n...\\n\\nEXPERIENCE\\nSenior Developer\\nABC Company | 2020-Present\\n• Built microservices...\\n• Improved performance by 40%",
+    "match_score_changes": {{ ... }},
+    ...
+}}
+```
+
+**WRONG - DO NOT DO THIS:**
+```json
+{{
+    "improved_resume": {{
+        "name": "JOHN DOE",
+        "skills": ["Python", "Docker"]
+    }},
+    ...
+}}
+```
+
 Return valid JSON with this EXACT structure:
 
 ```json
 {{
-    "improved_resume": "<<FULL REWRITTEN RESUME TEXT - ATS-FRIENDLY FORMAT>>",
+    "improved_resume": "<< PUT THE COMPLETE REWRITTEN RESUME HERE AS A SINGLE STRING WITH \\n FOR LINE BREAKS >>",
 
     "match_score_changes": {{
         "skills_match": {{
@@ -913,6 +935,26 @@ Now rewrite the resume following ALL instructions above. Ensure BOTH Match Score
                 content = content.split("```")[1].split("```")[0]
 
             data = json.loads(content.strip())
+
+            # CRITICAL VALIDATION: Check that improved_resume is a string, not a dict
+            if "improved_resume" in data:
+                if isinstance(data["improved_resume"], dict):
+                    logger.error(
+                        "LLM returned JSON object in improved_resume field instead of text string!",
+                        keys_found=list(data["improved_resume"].keys())
+                    )
+                    # Try to extract the actual resume from nested structure if possible
+                    # This is a fallback - should not happen with correct prompt
+                    return {"improved_resume": "ERROR: LLM returned invalid format. Please try again.", "parse_error": "improved_resume should be string, got dict"}
+                elif not isinstance(data["improved_resume"], str):
+                    logger.error(f"improved_resume is not a string: type={type(data['improved_resume'])}")
+                    return {"improved_resume": str(data["improved_resume"]), "parse_error": f"invalid type: {type(data['improved_resume'])}"}
+            else:
+                logger.warning("improved_resume field missing from LLM response!")
+                # Return the metadata but with error message
+                data["improved_resume"] = "ERROR: Resume text not found in response. Please try again."
+                data["parse_error"] = "missing improved_resume field"
+
             return data
 
         except json.JSONDecodeError as e:
