@@ -161,9 +161,16 @@ class CoverLetterGenerator:
 
 {name_instruction}
 
-Write ONLY the letter body. No date, addresses, "Dear...", or "Sincerely" - those are added separately.
+Write ONLY the letter body. DO NOT include:
+- Your name at the top or anywhere in the letter
+- Date, addresses
+- Salutations ("Dear Hiring Manager", "Dear...")
+- Closing ("Sincerely", "Best regards", etc.)
+- Signature
 
-Begin immediately with the opening paragraph:
+These elements are added automatically by the formatting system.
+
+Begin immediately with the opening paragraph content:
 """
 
         return prompt

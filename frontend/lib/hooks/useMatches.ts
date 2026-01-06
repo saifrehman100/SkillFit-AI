@@ -21,7 +21,7 @@ export function useMatches() {
 }
 
 export function useMatch(id: number | null) {
-  const { data, error } = useSWR<MatchResponse>(
+  const { data, error, mutate } = useSWR<MatchResponse>(
     id ? ['match', id] : null,
     () => matchesAPI.get(id!).then(res => res.data)
   );
@@ -30,5 +30,6 @@ export function useMatch(id: number | null) {
     match: data,
     isLoading: !error && !data,
     isError: error,
+    mutate,
   };
 }

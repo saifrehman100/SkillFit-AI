@@ -44,7 +44,7 @@ export function Header() {
         {/* User menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <button className="flex items-center gap-2 hover:opacity-80 transition-opacity" data-tour="user-menu">
               <Avatar>
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>

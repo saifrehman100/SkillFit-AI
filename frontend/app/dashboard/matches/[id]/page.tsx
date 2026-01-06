@@ -20,7 +20,7 @@ export default function MatchDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = parseInt(params.id as string);
-  const { match, isLoading } = useMatch(id);
+  const { match, isLoading, mutate } = useMatch(id);
 
   const [rewriting, setRewriting] = useState(false);
   const [rewriteResult, setRewriteResult] = useState<RewriteResponse | null>(null);
@@ -264,6 +264,8 @@ export default function MatchDetailPage() {
       if (saveToCollection) {
         toast.info('Improved resume has been saved to your collection!');
       }
+      // Refresh the match data to show updated scores
+      await mutate();
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Failed to rescan resume');
     } finally {

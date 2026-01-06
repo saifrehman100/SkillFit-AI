@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 from app.api.schemas import (
     UserCreate,
@@ -422,13 +423,21 @@ async def google_auth(
 
     except HTTPException:
         raise
+    except SQLAlchemyError as e:
+        from app.core.logging_config import get_logger
+        logger = get_logger(__name__)
+        logger.error("Database error during Google OAuth", error=str(e), error_type=type(e).__name__)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Our authentication service is temporarily unavailable. Please try again in a moment."
+        )
     except Exception as e:
         from app.core.logging_config import get_logger
         logger = get_logger(__name__)
-        logger.error("Google OAuth failed", error=str(e))
+        logger.error("Google OAuth failed", error=str(e), error_type=type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to authenticate with Google: {str(e)}"
+            detail="Authentication failed. Please try again or contact support if the problem persists."
         )
 
 
