@@ -5,24 +5,30 @@ import { Target } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useMatches } from '@/lib/hooks/useMatches';
+import { useResumes } from '@/lib/hooks/useResumes';
+import { useJobs } from '@/lib/hooks/useJobs';
 import { formatDate, getScoreColor } from '@/lib/utils';
 
 export default function MatchesPage() {
   const { matches, isLoading } = useMatches();
+  const { resumes } = useResumes();
+  const { jobs } = useJobs();
 
-  // Calculate user-scoped match numbers
-  const getMatchNumber = (matchId: number) => {
-    if (!matches) return matchId;
+  // Calculate user-scoped numbers
+  const getUserScopedNumber = (items: any[], currentId: number) => {
+    if (!items || items.length === 0) return currentId;
 
-    // Sort by created_at ascending (oldest first) to get sequential order
-    const sorted = [...matches].sort((a, b) =>
+    const sorted = [...items].sort((a, b) =>
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
 
-    // Find index (0-based) and add 1 for user-friendly numbering
-    const index = sorted.findIndex(m => m.id === matchId);
-    return index >= 0 ? index + 1 : matchId;
+    const index = sorted.findIndex(item => item.id === currentId);
+    return index >= 0 ? index + 1 : currentId;
   };
+
+  const getMatchNumber = (matchId: number) => getUserScopedNumber(matches || [], matchId);
+  const getResumeNumber = (resumeId: number) => getUserScopedNumber(resumes || [], resumeId);
+  const getJobNumber = (jobId: number) => getUserScopedNumber(jobs || [], jobId);
 
   if (isLoading) {
     return <div>Loading matches...</div>;
@@ -51,10 +57,14 @@ export default function MatchesPage() {
                         <Target className="h-5 w-5 text-primary" />
                         <h3 className="font-semibold">Match #{getMatchNumber(match.id)}</h3>
                       </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="grid grid-cols-3 gap-4 text-sm">
                         <div>
-                          <p className="text-muted-foreground">Match Score</p>
-                          <p className="font-medium">{match.match_score.toFixed(0)}%</p>
+                          <p className="text-muted-foreground">Resume</p>
+                          <p className="font-medium">#{getResumeNumber(match.resume_id)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Job</p>
+                          <p className="font-medium">#{getJobNumber(match.job_id)}</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">ATS Score</p>
@@ -64,7 +74,7 @@ export default function MatchesPage() {
                           <p className="text-muted-foreground">Created</p>
                           <p className="font-medium">{formatDate(match.created_at)}</p>
                         </div>
-                        <div>
+                        <div className="col-span-2">
                           <p className="text-muted-foreground">Model</p>
                           <p className="font-medium text-xs">{match.llm_model || 'N/A'}</p>
                         </div>

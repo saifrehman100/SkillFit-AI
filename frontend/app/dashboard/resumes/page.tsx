@@ -25,6 +25,18 @@ export default function ResumesPage() {
   const [matchesCount, setMatchesCount] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Calculate user-scoped resume numbers
+  const getResumeNumber = (resumeId: number) => {
+    if (!resumes) return resumeId;
+
+    const sorted = [...resumes].sort((a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
+    const index = sorted.findIndex(r => r.id === resumeId);
+    return index >= 0 ? index + 1 : resumeId;
+  };
+
   const handleDelete = async (id: number) => {
     try {
       // First, get the matches count
@@ -100,7 +112,10 @@ export default function ResumesPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-2 min-w-0 flex-1 overflow-hidden">
                     <FileText className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                    <CardTitle className="text-lg break-words overflow-wrap-anywhere">{resume.filename}</CardTitle>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm text-muted-foreground mb-1">Resume #{getResumeNumber(resume.id)}</div>
+                      <CardTitle className="text-lg break-words overflow-wrap-anywhere">{resume.filename}</CardTitle>
+                    </div>
                   </div>
                   <button
                     onClick={() => handleDelete(resume.id)}

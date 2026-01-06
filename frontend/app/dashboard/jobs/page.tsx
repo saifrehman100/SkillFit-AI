@@ -31,6 +31,18 @@ export default function JobsPage() {
   const [matchesCount, setMatchesCount] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Calculate user-scoped job numbers
+  const getJobNumber = (jobId: number) => {
+    if (!jobs) return jobId;
+
+    const sorted = [...jobs].sort((a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
+    const index = sorted.findIndex(j => j.id === jobId);
+    return index >= 0 ? index + 1 : jobId;
+  };
+
   const handleDelete = async (id: number) => {
     try {
       // First, get the matches count
@@ -167,7 +179,10 @@ export default function JobsPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-2 min-w-0 flex-1">
                     <Briefcase className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                    <CardTitle className="text-lg break-words">{job.title}</CardTitle>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm text-muted-foreground mb-1">Job #{getJobNumber(job.id)}</div>
+                      <CardTitle className="text-lg break-words">{job.title}</CardTitle>
+                    </div>
                   </div>
                   <button
                     onClick={() => handleDelete(job.id)}
