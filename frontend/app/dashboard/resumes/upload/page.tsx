@@ -8,11 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { resumesAPI } from '@/lib/api/resumes';
+import { useResumes } from '@/lib/hooks/useResumes';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export default function ResumeUploadPage() {
   const router = useRouter();
+  const { mutate } = useResumes();
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -73,6 +75,10 @@ export default function ResumeUploadPage() {
       setUploadProgress(100);
 
       toast.success('Resume uploaded and analyzed successfully!');
+
+      // Refresh resumes list before navigating
+      await mutate();
+
       setTimeout(() => {
         router.push('/dashboard/resumes');
       }, 1000);

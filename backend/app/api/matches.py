@@ -372,7 +372,7 @@ async def list_matches(
     if min_score > 0:
         query = query.filter(Match.match_score >= min_score)
 
-    matches = query.order_by(Match.match_score.desc()).offset(skip).limit(limit).all()
+    matches = query.order_by(Match.created_at.desc()).offset(skip).limit(limit).all()
 
     return matches
 
