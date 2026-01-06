@@ -10,6 +10,20 @@ import { formatDate, getScoreColor } from '@/lib/utils';
 export default function MatchesPage() {
   const { matches, isLoading } = useMatches();
 
+  // Calculate user-scoped match numbers
+  const getMatchNumber = (matchId: number) => {
+    if (!matches) return matchId;
+
+    // Sort by created_at ascending (oldest first) to get sequential order
+    const sorted = [...matches].sort((a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
+    // Find index (0-based) and add 1 for user-friendly numbering
+    const index = sorted.findIndex(m => m.id === matchId);
+    return index >= 0 ? index + 1 : matchId;
+  };
+
   if (isLoading) {
     return <div>Loading matches...</div>;
   }
@@ -35,16 +49,16 @@ export default function MatchesPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <Target className="h-5 w-5 text-primary" />
-                        <h3 className="font-semibold">Match #{match.id}</h3>
+                        <h3 className="font-semibold">Match #{getMatchNumber(match.id)}</h3>
                       </div>
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <p className="text-muted-foreground">Resume ID</p>
-                          <p className="font-medium">#{match.resume_id}</p>
+                          <p className="text-muted-foreground">Match Score</p>
+                          <p className="font-medium">{match.match_score.toFixed(0)}%</p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground">Job ID</p>
-                          <p className="font-medium">#{match.job_id}</p>
+                          <p className="text-muted-foreground">ATS Score</p>
+                          <p className="font-medium">{match.ats_score ? `${match.ats_score.toFixed(0)}%` : 'N/A'}</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Created</p>

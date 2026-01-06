@@ -10,7 +10,9 @@ import { RadialBarChart, RadialBar, PolarAngleAxis, ResponsiveContainer } from '
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useMatch } from '@/lib/hooks/useMatches';
+import { useMatch, useMatches } from '@/lib/hooks/useMatches';
+import { useResumes } from '@/lib/hooks/useResumes';
+import { useJobs } from '@/lib/hooks/useJobs';
 import { resumesAPI, RewriteResponse } from '@/lib/api/resumes';
 import { matchesAPI, InterviewPrepResponse, CoverLetterResponse } from '@/lib/api/matches';
 import { formatDate } from '@/lib/utils';
@@ -21,6 +23,9 @@ export default function MatchDetailPage() {
   const router = useRouter();
   const id = parseInt(params.id as string);
   const { match, isLoading, mutate } = useMatch(id);
+  const { matches: allMatches } = useMatches();
+  const { resumes: allResumes } = useResumes();
+  const { jobs: allJobs } = useJobs();
 
   const [rewriting, setRewriting] = useState(false);
   const [rewriteResult, setRewriteResult] = useState<RewriteResponse | null>(null);
@@ -39,6 +44,26 @@ export default function MatchDetailPage() {
   const [generatingCoverLetter, setGeneratingCoverLetter] = useState(false);
   const [downloadingCoverLetter, setDownloadingCoverLetter] = useState(false);
   const [coverLetterTone, setCoverLetterTone] = useState<'professional' | 'enthusiastic' | 'formal'>('professional');
+
+  // Calculate user-scoped numbers (sequential order based on creation time)
+  const getUserScopedNumber = (items: any[], currentId: number) => {
+    if (!items || items.length === 0) return currentId;
+
+    // Sort by created_at ascending (oldest first)
+    const sorted = [...items].sort((a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
+    // Find index of current item
+    const index = sorted.findIndex(item => item.id === currentId);
+
+    // Return 1-indexed position, or fallback to database ID
+    return index >= 0 ? index + 1 : currentId;
+  };
+
+  const userMatchNumber = match && allMatches ? getUserScopedNumber(allMatches, match.id) : match?.id;
+  const userResumeNumber = match && allResumes ? getUserScopedNumber(allResumes, match.resume_id) : match?.resume_id;
+  const userJobNumber = match && allJobs ? getUserScopedNumber(allJobs, match.job_id) : match?.job_id;
 
   // Load cached data when match loads
   useEffect(() => {
@@ -839,16 +864,16 @@ export default function MatchDetailPage() {
               <p className="font-medium">{formatDate(match.created_at)}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Match ID</p>
-              <p className="font-medium">#{match.id}</p>
+              <p className="text-muted-foreground">Match</p>
+              <p className="font-medium">#{userMatchNumber}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Resume ID</p>
-              <p className="font-medium">#{match.resume_id}</p>
+              <p className="text-muted-foreground">Resume</p>
+              <p className="font-medium">#{userResumeNumber}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Job ID</p>
-              <p className="font-medium">#{match.job_id}</p>
+              <p className="text-muted-foreground">Job</p>
+              <p className="font-medium">#{userJobNumber}</p>
             </div>
             {match.llm_provider && (
               <div>
