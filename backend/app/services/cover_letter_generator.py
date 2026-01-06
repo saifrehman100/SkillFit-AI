@@ -101,7 +101,9 @@ class CoverLetterGenerator:
 
         name_instruction = f"The candidate's name is {candidate_name}." if candidate_name else "Extract the candidate's name from the resume."
 
-        prompt = f"""You are an expert cover letter writer. Create a compelling, tailored cover letter that demonstrates clear alignment between the candidate and role.
+        prompt = f"""You are an expert cover letter writer. Create a compelling, tailored cover letter written IN FIRST PERSON from the candidate's perspective.
+
+**CRITICAL: Write AS the candidate (use "I", "my", "me"), NOT addressing the candidate. Do NOT use the candidate's name in the letter body.**
 
 **Position:** {job_title}
 **Company:** {company}
@@ -118,21 +120,23 @@ class CoverLetterGenerator:
 
 **Opening (2-3 sentences):**
 - Hook with specific enthusiasm for THIS role at THIS company
-- Immediately state your strongest qualification match
+- Immediately state the candidate's strongest qualification match
+- Use first person: "My experience in X..." or "I have successfully..."
 - Avoid: "I am writing to apply for..." or any generic opener
 
 **Body Paragraph 1 (4-5 sentences):**
-- Lead with your most relevant achievement
+- Lead with the candidate's most relevant achievement (written as "I achieved...")
 - Include specific metrics (numbers, percentages, outcomes)
 - Connect directly to a key requirement from the job description
+- Example: "I improved throughput by 70%..." NOT "You improved throughput by 70%..."
 
 **Body Paragraph 2 (4-5 sentences):**
-- Highlight 2-3 additional relevant skills/experiences
+- Highlight 2-3 additional relevant skills/experiences (written as "I possess...", "My experience with...")
 - Show breadth of qualification
 - Reference specific tools/technologies mentioned in job description
 
 **Closing (2-3 sentences):**
-- Express genuine interest in contributing to the company
+- Express genuine interest in contributing to the company (written as "I am eager...", "I welcome...")
 - Confident call to action
 - Thank them for consideration
 
@@ -161,8 +165,16 @@ class CoverLetterGenerator:
 
 {name_instruction}
 
+**VOICE AND PERSPECTIVE:**
+- Write in FIRST PERSON from the candidate's perspective
+- Use "I", "my", "me" throughout
+- DO NOT address the candidate by name (e.g., "Saif, your..." is WRONG)
+- DO NOT use second person "you/your" when referring to the candidate
+- Correct: "My experience in Python..."
+- Wrong: "Saif, your experience in Python..." or "Your experience in Python..."
+
 Write ONLY the letter body. DO NOT include:
-- Your name at the top or anywhere in the letter
+- Candidate's name at the top or anywhere in the letter
 - Date, addresses
 - Salutations ("Dear Hiring Manager", "Dear...")
 - Closing ("Sincerely", "Best regards", etc.)
