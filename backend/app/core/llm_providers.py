@@ -158,7 +158,7 @@ class OpenAIClient(BaseLLMClient):
         self.client = OpenAI(api_key=self.api_key or settings.openai_api_key)
 
     def get_default_model(self) -> str:
-        return "gpt-5.2"  # GPT-5.2 - best for coding and agentic tasks
+        return "gpt-5-mini-2025-08-07"  # GPT-5 Mini - efficient and cost-effective
 
     async def generate(
         self,
