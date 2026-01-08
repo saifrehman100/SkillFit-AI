@@ -192,3 +192,41 @@ def get_user_llm_api_key(user: User, provider: str) -> Optional[str]:
     }
 
     return provider_keys.get(provider)
+
+
+def normalize_llm_provider_and_model(provider: Optional[str], model: Optional[str]) -> tuple[str, str]:
+    """
+    Normalize and validate LLM provider and model combination.
+    Auto-corrects mismatched provider-model pairs.
+
+    Args:
+        provider: The LLM provider name (or None to use default)
+        model: The model name (or None to use provider's default)
+
+    Returns:
+        tuple[str, str]: (normalized_provider, normalized_model)
+    """
+    from app.core.llm_providers import LLMFactory, LLMProvider
+
+    # Use default provider if not specified
+    if not provider:
+        provider = settings.default_llm_provider
+
+    # Normalize provider name
+    try:
+        provider_enum = LLMProvider(provider.lower())
+    except ValueError:
+        # Invalid provider, use default
+        provider = settings.default_llm_provider
+        provider_enum = LLMProvider(provider.lower())
+
+    # Validate and auto-correct model if needed
+    if model:
+        corrected_model, was_corrected = LLMFactory.validate_model_for_provider(provider_enum, model)
+        if was_corrected:
+            model = corrected_model
+    else:
+        # No model specified, will use provider's default
+        model = None
+
+    return provider, model

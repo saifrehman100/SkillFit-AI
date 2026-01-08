@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.schemas import JobCreate, JobResponse
-from app.core.auth import get_current_user, get_user_llm_api_key
+from app.core.auth import get_current_user, get_user_llm_api_key, normalize_llm_provider_and_model
 from app.core.config import settings
 from app.core.llm_providers import LLMFactory
 from app.models.database import get_db
@@ -61,8 +61,11 @@ async def create_job(
     if analyze:
         try:
             # Use user's preferred provider and model if set, otherwise use defaults
-            provider = current_user.llm_provider or settings.default_llm_provider
-            model = current_user.llm_model or settings.default_model_name
+            # Normalize to prevent provider-model mismatches
+            provider, model = normalize_llm_provider_and_model(
+                current_user.llm_provider or settings.default_llm_provider,
+                current_user.llm_model or settings.default_model_name
+            )
 
             api_key = get_user_llm_api_key(current_user, provider)
             llm_client = LLMFactory.create_client(
@@ -144,8 +147,11 @@ async def import_job_from_url(
     if analyze:
         try:
             # Use user's preferred provider and model if set, otherwise use defaults
-            provider = current_user.llm_provider or settings.default_llm_provider
-            model = current_user.llm_model or settings.default_model_name
+            # Normalize to prevent provider-model mismatches
+            provider, model = normalize_llm_provider_and_model(
+                current_user.llm_provider or settings.default_llm_provider,
+                current_user.llm_model or settings.default_model_name
+            )
 
             api_key = get_user_llm_api_key(current_user, provider)
             llm_client = LLMFactory.create_client(

@@ -352,6 +352,58 @@ class OpenAICompatibleClient(BaseLLMClient):
 class LLMFactory:
     """Factory for creating LLM clients."""
 
+    # Model prefixes for each provider to detect mismatches
+    PROVIDER_MODEL_PREFIXES = {
+        LLMProvider.OPENAI: ["gpt-", "o1-", "o3-"],
+        LLMProvider.CLAUDE: ["claude-"],
+        LLMProvider.GEMINI: ["gemini-"],
+        LLMProvider.OPENAI_COMPATIBLE: [],  # Can use any model name
+    }
+
+    @staticmethod
+    def validate_model_for_provider(provider: LLMProvider, model: str) -> tuple[str, bool]:
+        """
+        Validate if a model is compatible with a provider.
+
+        Returns:
+            tuple[str, bool]: (validated_model, was_corrected)
+                - validated_model: The model to use (original or default)
+                - was_corrected: True if the model was corrected due to mismatch
+        """
+        if not model:
+            return model, False
+
+        # OpenAI-compatible can use any model
+        if provider == LLMProvider.OPENAI_COMPATIBLE:
+            return model, False
+
+        prefixes = LLMFactory.PROVIDER_MODEL_PREFIXES.get(provider, [])
+
+        # Check if model starts with any valid prefix for this provider
+        model_lower = model.lower()
+        is_valid = any(model_lower.startswith(prefix) for prefix in prefixes)
+
+        if not is_valid:
+            # Model doesn't match provider - use provider's default
+            clients = {
+                LLMProvider.CLAUDE: ClaudeClient,
+                LLMProvider.OPENAI: OpenAIClient,
+                LLMProvider.GEMINI: GeminiClient,
+                LLMProvider.OPENAI_COMPATIBLE: OpenAICompatibleClient,
+            }
+            client_class = clients.get(provider)
+            default_model = client_class(api_key="dummy").get_default_model()
+
+            logger.warning(
+                "Model mismatch detected - using provider default",
+                provider=provider.value,
+                requested_model=model,
+                corrected_model=default_model
+            )
+            return default_model, True
+
+        return model, False
+
     @staticmethod
     def create_client(
         provider: str | LLMProvider,
@@ -366,6 +418,16 @@ class LLMFactory:
                 provider = LLMProvider(provider.lower())
             except ValueError:
                 raise ValueError(f"Unsupported LLM provider: {provider}")
+
+        # Validate and auto-correct model if needed
+        if model:
+            model, was_corrected = LLMFactory.validate_model_for_provider(provider, model)
+            if was_corrected:
+                logger.info(
+                    "Auto-corrected model for provider compatibility",
+                    provider=provider.value,
+                    model=model
+                )
 
         logger.info("Creating LLM client", provider=provider.value, model=model)
 

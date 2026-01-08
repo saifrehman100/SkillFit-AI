@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status,
 from sqlalchemy.orm import Session
 
 from app.api.schemas import ResumeResponse, ResumeUpload
-from app.core.auth import get_current_user, get_user_llm_api_key
+from app.core.auth import get_current_user, get_user_llm_api_key, normalize_llm_provider_and_model
 from app.core.config import settings
 from app.core.llm_providers import LLMFactory
 from app.core.storage import get_storage_client
@@ -151,8 +151,11 @@ async def upload_resume(
     if analyze:
         try:
             # Use user's preferred provider and model if set, otherwise use defaults
-            provider = current_user.llm_provider or settings.default_llm_provider
-            model = current_user.llm_model or settings.default_model_name
+            # Normalize to prevent provider-model mismatches
+            provider, model = normalize_llm_provider_and_model(
+                current_user.llm_provider or settings.default_llm_provider,
+                current_user.llm_model or settings.default_model_name
+            )
 
             api_key = get_user_llm_api_key(current_user, provider)
             llm_client = LLMFactory.create_client(
@@ -391,8 +394,11 @@ async def rewrite_resume(
 
     try:
         # Use user's preferred provider and model if set, otherwise use defaults
-        provider = current_user.llm_provider or settings.default_llm_provider
-        model = current_user.llm_model or settings.default_model_name
+        # Normalize to prevent provider-model mismatches
+        provider, model = normalize_llm_provider_and_model(
+            current_user.llm_provider or settings.default_llm_provider,
+            current_user.llm_model or settings.default_model_name
+        )
 
         # Get LLM client
         api_key = get_user_llm_api_key(current_user, provider)
@@ -759,8 +765,11 @@ async def generate_interview_questions(
 
     try:
         # Use user's preferred provider and model if set, otherwise use defaults
-        provider = current_user.llm_provider or settings.default_llm_provider
-        model = current_user.llm_model or settings.default_model_name
+        # Normalize to prevent provider-model mismatches
+        provider, model = normalize_llm_provider_and_model(
+            current_user.llm_provider or settings.default_llm_provider,
+            current_user.llm_model or settings.default_model_name
+        )
 
         # Get LLM client
         api_key = get_user_llm_api_key(current_user, provider)
@@ -854,8 +863,11 @@ async def download_interview_prep_docx(
 
     try:
         # Use user's preferred provider and model if set, otherwise use defaults
-        provider = current_user.llm_provider or settings.default_llm_provider
-        model = current_user.llm_model or settings.default_model_name
+        # Normalize to prevent provider-model mismatches
+        provider, model = normalize_llm_provider_and_model(
+            current_user.llm_provider or settings.default_llm_provider,
+            current_user.llm_model or settings.default_model_name
+        )
 
         # Get LLM client
         api_key = get_user_llm_api_key(current_user, provider)
@@ -957,8 +969,11 @@ async def download_interview_prep_pdf(
 
     try:
         # Use user's preferred provider and model if set, otherwise use defaults
-        provider = current_user.llm_provider or settings.default_llm_provider
-        model = current_user.llm_model or settings.default_model_name
+        # Normalize to prevent provider-model mismatches
+        provider, model = normalize_llm_provider_and_model(
+            current_user.llm_provider or settings.default_llm_provider,
+            current_user.llm_model or settings.default_model_name
+        )
 
         # Get LLM client
         api_key = get_user_llm_api_key(current_user, provider)
@@ -1044,8 +1059,11 @@ async def generate_cover_letter(
 
     try:
         # Use user's preferred provider and model if set, otherwise use defaults
-        provider = current_user.llm_provider or settings.default_llm_provider
-        model = current_user.llm_model or settings.default_model_name
+        # Normalize to prevent provider-model mismatches
+        provider, model = normalize_llm_provider_and_model(
+            current_user.llm_provider or settings.default_llm_provider,
+            current_user.llm_model or settings.default_model_name
+        )
 
         # Get LLM client
         api_key = get_user_llm_api_key(current_user, provider)
@@ -1117,8 +1135,11 @@ async def download_cover_letter_docx(
 
     try:
         # Use user's preferred provider and model if set, otherwise use defaults
-        provider = current_user.llm_provider or settings.default_llm_provider
-        model = current_user.llm_model or settings.default_model_name
+        # Normalize to prevent provider-model mismatches
+        provider, model = normalize_llm_provider_and_model(
+            current_user.llm_provider or settings.default_llm_provider,
+            current_user.llm_model or settings.default_model_name
+        )
 
         # Get LLM client
         api_key = get_user_llm_api_key(current_user, provider)
@@ -1200,8 +1221,11 @@ async def download_cover_letter_pdf(
 
     try:
         # Use user's preferred provider and model if set, otherwise use defaults
-        provider = current_user.llm_provider or settings.default_llm_provider
-        model = current_user.llm_model or settings.default_model_name
+        # Normalize to prevent provider-model mismatches
+        provider, model = normalize_llm_provider_and_model(
+            current_user.llm_provider or settings.default_llm_provider,
+            current_user.llm_model or settings.default_model_name
+        )
 
         # Get LLM client
         api_key = get_user_llm_api_key(current_user, provider)
