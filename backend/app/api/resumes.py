@@ -150,11 +150,15 @@ async def upload_resume(
     # Analyze with LLM if requested
     if analyze:
         try:
-            api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+            # Use user's preferred provider and model if set, otherwise use defaults
+            provider = current_user.llm_provider or settings.default_llm_provider
+            model = current_user.llm_model or settings.default_model_name
+
+            api_key = get_user_llm_api_key(current_user, provider)
             llm_client = LLMFactory.create_client(
-                provider=settings.default_llm_provider,
+                provider=provider,
                 api_key=api_key,
-                model=settings.default_model_name
+                model=model
             )
 
             analyzer = ResumeAnalyzer(llm_client)
@@ -386,12 +390,16 @@ async def rewrite_resume(
         }
 
     try:
+        # Use user's preferred provider and model if set, otherwise use defaults
+        provider = current_user.llm_provider or settings.default_llm_provider
+        model = current_user.llm_model or settings.default_model_name
+
         # Get LLM client
-        api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+        api_key = get_user_llm_api_key(current_user, provider)
         llm_client = LLMFactory.create_client(
-            provider=settings.default_llm_provider,
+            provider=provider,
             api_key=api_key,
-            model=settings.default_model_name
+            model=model
         )
 
         # Run ATS analysis for v2 rewriter
@@ -750,12 +758,16 @@ async def generate_interview_questions(
     recommendations = match.recommendations if match else None
 
     try:
+        # Use user's preferred provider and model if set, otherwise use defaults
+        provider = current_user.llm_provider or settings.default_llm_provider
+        model = current_user.llm_model or settings.default_model_name
+
         # Get LLM client
-        api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+        api_key = get_user_llm_api_key(current_user, provider)
         llm_client = LLMFactory.create_client(
-            provider=settings.default_llm_provider,
+            provider=provider,
             api_key=api_key,
-            model=settings.default_model_name
+            model=model
         )
 
         # Generate interview questions
@@ -841,12 +853,16 @@ async def download_interview_prep_docx(
     recommendations = match.recommendations if match else None
 
     try:
+        # Use user's preferred provider and model if set, otherwise use defaults
+        provider = current_user.llm_provider or settings.default_llm_provider
+        model = current_user.llm_model or settings.default_model_name
+
         # Get LLM client
-        api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+        api_key = get_user_llm_api_key(current_user, provider)
         llm_client = LLMFactory.create_client(
-            provider=settings.default_llm_provider,
+            provider=provider,
             api_key=api_key,
-            model=settings.default_model_name
+            model=model
         )
 
         # Generate interview questions
@@ -940,12 +956,16 @@ async def download_interview_prep_pdf(
     recommendations = match.recommendations if match else None
 
     try:
+        # Use user's preferred provider and model if set, otherwise use defaults
+        provider = current_user.llm_provider or settings.default_llm_provider
+        model = current_user.llm_model or settings.default_model_name
+
         # Get LLM client
-        api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+        api_key = get_user_llm_api_key(current_user, provider)
         llm_client = LLMFactory.create_client(
-            provider=settings.default_llm_provider,
+            provider=provider,
             api_key=api_key,
-            model=settings.default_model_name
+            model=model
         )
 
         # Generate interview questions
@@ -1023,12 +1043,16 @@ async def generate_cover_letter(
         )
 
     try:
+        # Use user's preferred provider and model if set, otherwise use defaults
+        provider = current_user.llm_provider or settings.default_llm_provider
+        model = current_user.llm_model or settings.default_model_name
+
         # Get LLM client
-        api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+        api_key = get_user_llm_api_key(current_user, provider)
         llm_client = LLMFactory.create_client(
-            provider=settings.default_llm_provider,
+            provider=provider,
             api_key=api_key,
-            model=settings.default_model_name
+            model=model
         )
 
         # Generate cover letter
@@ -1092,12 +1116,16 @@ async def download_cover_letter_docx(
         )
 
     try:
+        # Use user's preferred provider and model if set, otherwise use defaults
+        provider = current_user.llm_provider or settings.default_llm_provider
+        model = current_user.llm_model or settings.default_model_name
+
         # Get LLM client
-        api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+        api_key = get_user_llm_api_key(current_user, provider)
         llm_client = LLMFactory.create_client(
-            provider=settings.default_llm_provider,
+            provider=provider,
             api_key=api_key,
-            model=settings.default_model_name
+            model=model
         )
 
         # Generate cover letter
@@ -1171,12 +1199,16 @@ async def download_cover_letter_pdf(
         )
 
     try:
+        # Use user's preferred provider and model if set, otherwise use defaults
+        provider = current_user.llm_provider or settings.default_llm_provider
+        model = current_user.llm_model or settings.default_model_name
+
         # Get LLM client
-        api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+        api_key = get_user_llm_api_key(current_user, provider)
         llm_client = LLMFactory.create_client(
-            provider=settings.default_llm_provider,
+            provider=provider,
             api_key=api_key,
-            model=settings.default_model_name
+            model=model
         )
 
         # Generate cover letter
@@ -1490,12 +1522,16 @@ async def rescan_improved_resume(
         )
 
     try:
+        # Use user's preferred provider and model if set, otherwise use defaults
+        provider = current_user.llm_provider or settings.default_llm_provider
+        model = current_user.llm_model or settings.default_model_name
+
         # Analyze the improved resume
-        api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+        api_key = get_user_llm_api_key(current_user, provider)
         llm_client = LLMFactory.create_client(
-            provider=settings.default_llm_provider,
+            provider=provider,
             api_key=api_key,
-            model=settings.default_model_name
+            model=model
         )
 
         analyzer = ResumeAnalyzer(llm_client)

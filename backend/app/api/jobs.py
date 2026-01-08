@@ -60,11 +60,15 @@ async def create_job(
     # Extract skills with LLM if requested
     if analyze:
         try:
-            api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+            # Use user's preferred provider and model if set, otherwise use defaults
+            provider = current_user.llm_provider or settings.default_llm_provider
+            model = current_user.llm_model or settings.default_model_name
+
+            api_key = get_user_llm_api_key(current_user, provider)
             llm_client = LLMFactory.create_client(
-                provider=settings.default_llm_provider,
+                provider=provider,
                 api_key=api_key,
-                model=settings.default_model_name
+                model=model
             )
 
             extractor = SkillExtractor(llm_client)
@@ -139,11 +143,15 @@ async def import_job_from_url(
     # Extract skills with LLM if requested
     if analyze:
         try:
-            api_key = get_user_llm_api_key(current_user, settings.default_llm_provider)
+            # Use user's preferred provider and model if set, otherwise use defaults
+            provider = current_user.llm_provider or settings.default_llm_provider
+            model = current_user.llm_model or settings.default_model_name
+
+            api_key = get_user_llm_api_key(current_user, provider)
             llm_client = LLMFactory.create_client(
-                provider=settings.default_llm_provider,
+                provider=provider,
                 api_key=api_key,
-                model=settings.default_model_name
+                model=model
             )
 
             extractor = SkillExtractor(llm_client)
