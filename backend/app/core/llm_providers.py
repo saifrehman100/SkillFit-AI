@@ -171,11 +171,6 @@ class OpenAIClient(BaseLLMClient):
         try:
             logger.info("Generating response with OpenAI", model=self.model)
 
-            # GPT-5 and O1 models use max_completion_tokens instead of max_tokens
-            # GPT-4 and earlier use max_tokens
-            model_lower = self.model.lower()
-            uses_completion_tokens = any(prefix in model_lower for prefix in ["gpt-5", "o1-", "o3-"])
-
             request_params = {
                 "model": self.model,
                 "messages": [{"role": "user", "content": prompt}],
@@ -183,10 +178,11 @@ class OpenAIClient(BaseLLMClient):
                 **kwargs
             }
 
-            # Use the appropriate parameter based on model type
-            if uses_completion_tokens:
-                request_params["max_completion_tokens"] = max_tokens
-            else:
+            # GPT-5 and O1 models don't support max_tokens parameter
+            # They use automatic token management instead
+            model_lower = self.model.lower()
+            if not any(prefix in model_lower for prefix in ["gpt-5", "o1-", "o3-"]):
+                # Only add max_tokens for GPT-4 and earlier models
                 request_params["max_tokens"] = max_tokens
 
             response = self.client.chat.completions.create(**request_params)
